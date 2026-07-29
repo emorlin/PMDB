@@ -9,30 +9,31 @@ interface Props {
 export default function AlphabetFilter({ active, onSelect, disabled }: Props) {
   return (
     <>
-      {/* Desktop: vertikal bokstavslista */}
+      {/* Desktop: horisontell bokstavsrad */}
       <div
         role="group"
         aria-label="Filtrera efter bokstav"
-        className={`hidden md:flex flex-col gap-0.5 shrink-0 ${disabled ? 'opacity-40 pointer-events-none' : ''}`}
+        className={`hidden md:flex flex-wrap items-center gap-1 mb-4 pb-4 border-b border-border ${disabled ? 'opacity-40 pointer-events-none' : ''}`}
       >
         <button
           type="button"
           aria-pressed={active === null}
           onClick={() => onSelect(null)}
-          className={`text-xs px-2 py-1 rounded text-left ${
-            active === null ? 'text-accent-text font-medium' : 'text-text-muted hover:text-text'
+          className={`px-2 h-7 rounded text-xs font-medium ${
+            active === null ? 'bg-surface-2 text-accent-text' : 'text-text-muted hover:text-text'
           }`}
         >
           Alla
         </button>
+        <span className="w-px h-5 bg-border mx-1" aria-hidden="true" />
         {LETTERS.map((l) => (
           <button
             key={l}
             type="button"
             aria-pressed={active === l}
             onClick={() => onSelect(l)}
-            className={`text-xs px-2 py-1 rounded text-left ${
-              active === l ? 'text-accent-text font-medium' : 'text-text-muted hover:text-text'
+            className={`w-7 h-7 rounded text-xs ${
+              active === l ? 'bg-surface-2 text-accent-text font-medium' : 'text-text-muted hover:text-text'
             }`}
           >
             {l}

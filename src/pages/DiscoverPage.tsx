@@ -86,9 +86,7 @@ export default function DiscoverPage() {
       ) : (
         <>
           <AlphabetFilter active={letter} onSelect={handleLetterSelect} disabled={!!randomOrder} />
-          <div className="flex gap-4">
-            <PosterGrid movies={pageItems} />
-          </div>
+          <PosterGrid movies={pageItems} />
 
           {totalPages > 1 && (
             <nav aria-label="Sidnumrering" className="flex items-center justify-center gap-3 mt-5 text-sm">
