@@ -27,6 +27,9 @@ export default function AppLayout() {
             <NavLink to="/admin" className={linkClass}>
               Inställningar
             </NavLink>
+            <NavLink to="/om" className={linkClass}>
+              Om
+            </NavLink>
           </nav>
         </div>
       </header>
