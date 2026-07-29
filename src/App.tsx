@@ -3,6 +3,7 @@ import AppLayout from './components/AppLayout'
 import MovieTablePage from './pages/MovieTablePage'
 import DiscoverPage from './pages/DiscoverPage'
 import MovieDetailPage from './pages/MovieDetailPage'
+import AdminPage from './pages/AdminPage'
 
 function App() {
   return (
@@ -11,6 +12,7 @@ function App() {
         <Route path="/" element={<MovieTablePage />} />
         <Route path="/discover" element={<DiscoverPage />} />
         <Route path="/movie/:id" element={<MovieDetailPage />} />
+        <Route path="/admin" element={<AdminPage />} />
       </Route>
     </Routes>
   )

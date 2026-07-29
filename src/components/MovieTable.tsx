@@ -55,7 +55,7 @@ export default function MovieTable({ movies, sort, dir, onSort }: Props) {
               <td className="px-3 py-2">{m.my_rating ?? '–'}</td>
               <td className="px-3 py-2">{m.imdb_rating ?? '–'}</td>
               <td className="px-3 py-2">{formatRuntime(m.runtime_minutes)}</td>
-              <td className="px-3 py-2">{m.location ?? '–'}</td>
+              <td className="px-3 py-2">{m.location?.name ?? '–'}</td>
             </tr>
           ))}
           {movies.length === 0 && (

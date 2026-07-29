@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react'
 import { searchMovies, getMovieDetails, posterUrl, type TmdbSearchResult } from '../lib/tmdb'
 import { getImdbRating } from '../lib/omdb'
 import { addMovie } from '../lib/movies'
+import { listLocations } from '../lib/locations'
 import type { Movie } from '../types/movie'
+import type { Location } from '../types/location'
 
 interface Props {
   onClose: () => void
@@ -25,10 +27,17 @@ export default function AddMovieModal({ onClose, onAdded }: Props) {
   const [loadingResults, setLoadingResults] = useState(false)
   const [selected, setSelected] = useState<Selected | null>(null)
   const [loadingDetails, setLoadingDetails] = useState(false)
-  const [location, setLocation] = useState('')
+  const [locations, setLocations] = useState<Location[]>([])
+  const [locationId, setLocationId] = useState('')
   const [myRating, setMyRating] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    listLocations()
+      .then(setLocations)
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (selected || !query.trim()) {
@@ -89,7 +98,7 @@ export default function AddMovieModal({ onClose, onAdded }: Props) {
         runtime_minutes: selected.runtime_minutes,
         imdb_rating: selected.imdb_rating,
         my_rating: myRating ? parseInt(myRating, 10) : null,
-        location: location || null,
+        location_id: locationId || null,
       })
       onAdded(movie)
       onClose()
@@ -173,13 +182,18 @@ export default function AddMovieModal({ onClose, onAdded }: Props) {
 
             <div className="text-xs text-text-muted mb-1">Fyll i manuellt</div>
             <div className="grid grid-cols-2 gap-2 mb-4">
-              <input
-                type="text"
-                placeholder="Placering (t.ex. Hylla 2)"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
+              <select
+                value={locationId}
+                onChange={(e) => setLocationId(e.target.value)}
                 className="rounded-md bg-surface-2 border border-border px-2 py-1.5 text-sm outline-none focus:border-accent"
-              />
+              >
+                <option value="">Välj plats...</option>
+                {locations.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.name}
+                  </option>
+                ))}
+              </select>
               <input
                 type="number"
                 min={1}
@@ -190,6 +204,11 @@ export default function AddMovieModal({ onClose, onAdded }: Props) {
                 className="rounded-md bg-surface-2 border border-border px-2 py-1.5 text-sm outline-none focus:border-accent"
               />
             </div>
+            {locations.length === 0 && (
+              <div className="text-xs text-text-muted -mt-2 mb-4">
+                Inga platser ännu – lägg till under Inställningar.
+              </div>
+            )}
 
             <div className="flex gap-2">
               <button

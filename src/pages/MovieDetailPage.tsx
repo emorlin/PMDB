@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { getMovie, deleteMovie, updateMovie } from '../lib/movies'
 import { getMovieDetails, posterUrl, type TmdbMovieDetails } from '../lib/tmdb'
+import { listLocations } from '../lib/locations'
 import type { Movie } from '../types/movie'
+import type { Location } from '../types/location'
 
 function formatRuntime(min: number | null) {
   if (!min) return '–'
@@ -20,8 +22,15 @@ export default function MovieDetailPage() {
   const [error, setError] = useState<string | null>(null)
   const [editing, setEditing] = useState(false)
   const [editRating, setEditRating] = useState('')
-  const [editLocation, setEditLocation] = useState('')
+  const [editLocationId, setEditLocationId] = useState('')
+  const [locations, setLocations] = useState<Location[]>([])
   const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    listLocations()
+      .then(setLocations)
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (!id) return
@@ -47,7 +56,7 @@ export default function MovieDetailPage() {
   function startEdit() {
     if (!movie) return
     setEditRating(movie.my_rating?.toString() ?? '')
-    setEditLocation(movie.location ?? '')
+    setEditLocationId(movie.location_id ?? '')
     setEditing(true)
   }
 
@@ -57,7 +66,7 @@ export default function MovieDetailPage() {
     try {
       const updated = await updateMovie(movie.id, {
         my_rating: editRating ? parseInt(editRating, 10) : null,
-        location: editLocation || null,
+        location_id: editLocationId || null,
       })
       setMovie(updated)
       setEditing(false)
@@ -109,12 +118,18 @@ export default function MovieDetailPage() {
               </div>
               <div>
                 <div className="text-xs text-text-muted mb-1">Placering</div>
-                <input
-                  type="text"
-                  value={editLocation}
-                  onChange={(e) => setEditLocation(e.target.value)}
-                  className="w-32 rounded-md bg-surface-2 border border-border px-2 py-1 text-sm outline-none focus:border-accent"
-                />
+                <select
+                  value={editLocationId}
+                  onChange={(e) => setEditLocationId(e.target.value)}
+                  className="w-36 rounded-md bg-surface-2 border border-border px-2 py-1 text-sm outline-none focus:border-accent"
+                >
+                  <option value="">Ingen</option>
+                  {locations.map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.name}
+                    </option>
+                  ))}
+                </select>
               </div>
               <button
                 onClick={handleSaveEdit}
@@ -142,7 +157,7 @@ export default function MovieDetailPage() {
               </div>
               <div>
                 <div className="text-xs text-text-muted">Placering</div>
-                <div className="text-lg font-medium">{movie.location ?? '–'}</div>
+                <div className="text-lg font-medium">{movie.location?.name ?? '–'}</div>
               </div>
             </div>
           )}
