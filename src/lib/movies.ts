@@ -3,19 +3,35 @@ import type { Movie, MovieInsert, SortColumn, SortDirection } from '../types/mov
 
 const SELECT_WITH_LOCATION = '*, location:locations(name)'
 
+// PostgREST svarar med max 1000 rader per anrop om man inte sidbryter själv –
+// utan detta trunkeras samlingen tyst (filmer sorterade sist, t.ex. sent i
+// alfabetet, försvinner helt ur listan).
+const FETCH_PAGE_SIZE = 1000
+
 export async function listMovies(sort: SortColumn, dir: SortDirection): Promise<Movie[]> {
-  let query = supabase.from('movies').select(SELECT_WITH_LOCATION)
+  const movies: Movie[] = []
+  let from = 0
 
-  // PostgREST kan bara sortera föräldrarader på ett embeddat fälts kolumn om
-  // relationen hämtas med !inner (en riktig join) – men det skulle utesluta
-  // filmer utan plats ur listan helt. Sortera istället i klienten för "location".
-  if (sort !== 'location') {
-    query = query.order(sort, { ascending: dir === 'asc', nullsFirst: false })
+  for (;;) {
+    let query = supabase.from('movies').select(SELECT_WITH_LOCATION)
+
+    // PostgREST kan bara sortera föräldrarader på ett embeddat fälts kolumn om
+    // relationen hämtas med !inner (en riktig join) – men det skulle utesluta
+    // filmer utan plats ur listan helt. Sortera istället i klienten för "location".
+    if (sort !== 'location') {
+      query = query.order(sort, { ascending: dir === 'asc', nullsFirst: false })
+    }
+    // Sekundär sortering på id ger deterministisk ordning så att .range()
+    // sidbryter stabilt istället för att riskera hoppa över eller dubblera rader.
+    query = query.order('id', { ascending: true }).range(from, from + FETCH_PAGE_SIZE - 1)
+
+    const { data, error } = await query
+    if (error) throw error
+    const page = data as unknown as Movie[]
+    movies.push(...page)
+    if (page.length < FETCH_PAGE_SIZE) break
+    from += FETCH_PAGE_SIZE
   }
-
-  const { data, error } = await query
-  if (error) throw error
-  const movies = data as unknown as Movie[]
 
   if (sort === 'location') {
     const dirMultiplier = dir === 'asc' ? 1 : -1
