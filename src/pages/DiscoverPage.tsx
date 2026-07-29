@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import AlphabetFilter from '../components/AlphabetFilter'
 import PosterGrid from '../components/PosterGrid'
+import AddMovieModal from '../components/AddMovieModal'
 import { listMovies } from '../lib/movies'
 import type { Movie } from '../types/movie'
 
@@ -21,12 +23,14 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 export default function DiscoverPage() {
+  const navigate = useNavigate()
   const [all, setAll] = useState<Movie[]>([])
   const [loading, setLoading] = useState(true)
   const [letter, setLetter] = useState<string | null>(null)
   const [onlyUnseen, setOnlyUnseen] = useState(false)
   const [randomOrder, setRandomOrder] = useState<Movie[] | null>(null)
   const [page, setPage] = useState(1)
+  const [showAdd, setShowAdd] = useState(false)
 
   useEffect(() => {
     listMovies('title', 'asc')
@@ -71,12 +75,20 @@ export default function DiscoverPage() {
           />
           Endast osedda
         </label>
-        <button
-          onClick={handleShuffle}
-          className="rounded-md border border-border px-3 py-2 min-h-11 text-sm hover:bg-surface-2"
-        >
-          Slumpa filmer
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleShuffle}
+            className="rounded-md border border-border px-3 py-2 min-h-11 text-sm hover:bg-surface-2"
+          >
+            Slumpa filmer
+          </button>
+          <button
+            onClick={() => setShowAdd(true)}
+            className="rounded-md bg-accent text-black px-3 py-2 min-h-11 text-sm font-medium"
+          >
+            + Lägg till film
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -110,6 +122,10 @@ export default function DiscoverPage() {
             </nav>
           )}
         </>
+      )}
+
+      {showAdd && (
+        <AddMovieModal onClose={() => setShowAdd(false)} onAdded={(m) => navigate(`/movie/${m.id}`)} />
       )}
     </div>
   )

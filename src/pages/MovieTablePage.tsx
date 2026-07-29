@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import MovieTable from '../components/MovieTable'
 import AddMovieModal from '../components/AddMovieModal'
 import { listMovies } from '../lib/movies'
 import type { Movie, SortColumn, SortDirection } from '../types/movie'
 
 export default function MovieTablePage() {
+  const navigate = useNavigate()
   const [movies, setMovies] = useState<Movie[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -64,10 +66,7 @@ export default function MovieTablePage() {
       )}
 
       {showAdd && (
-        <AddMovieModal
-          onClose={() => setShowAdd(false)}
-          onAdded={(m) => setMovies((prev) => [...prev, m])}
-        />
+        <AddMovieModal onClose={() => setShowAdd(false)} onAdded={(m) => navigate(`/movie/${m.id}`)} />
       )}
     </div>
   )
