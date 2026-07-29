@@ -58,19 +58,21 @@ export default function AdminPage() {
 
       <section className="mb-8">
         <h2 className="text-sm font-medium text-text-muted mb-2">Tema</h2>
-        <div className="flex gap-2">
+        <div className="flex gap-2" role="group" aria-label="Välj tema">
           <button
             onClick={() => setTheme('light')}
-            className={`rounded-md border px-3 py-1.5 text-sm ${
-              theme === 'light' ? 'border-accent text-accent' : 'border-border'
+            aria-pressed={theme === 'light'}
+            className={`rounded-md border px-3 py-2 min-h-11 text-sm ${
+              theme === 'light' ? 'border-accent text-accent-text' : 'border-border'
             }`}
           >
             Ljust
           </button>
           <button
             onClick={() => setTheme('dark')}
-            className={`rounded-md border px-3 py-1.5 text-sm ${
-              theme === 'dark' ? 'border-accent text-accent' : 'border-border'
+            aria-pressed={theme === 'dark'}
+            className={`rounded-md border px-3 py-2 min-h-11 text-sm ${
+              theme === 'dark' ? 'border-accent text-accent-text' : 'border-border'
             }`}
           >
             Mörkt
@@ -81,21 +83,28 @@ export default function AdminPage() {
       <section>
         <h2 className="text-sm font-medium text-text-muted mb-2">Platser (placering)</h2>
 
-        {error && <div className="text-xs text-red-400 mb-2">{error}</div>}
+        {error && (
+          <div role="alert" className="text-xs text-danger mb-2">
+            {error}
+          </div>
+        )}
 
         {loading ? (
-          <div className="text-text-muted text-sm mb-3">Laddar...</div>
+          <div role="status" className="text-text-muted text-sm mb-3">
+            Laddar...
+          </div>
         ) : (
           <ul className="border border-border rounded-md overflow-hidden mb-3">
             {locations.map((l) => (
               <li
                 key={l.id}
-                className="flex items-center justify-between px-3 py-2 text-sm border-b border-border last:border-b-0"
+                className="flex items-center justify-between gap-2 px-3 py-2 text-sm border-b border-border last:border-b-0"
               >
                 {l.name}
                 <button
                   onClick={() => handleDelete(l.id)}
-                  className="text-text-muted hover:text-red-400 text-xs"
+                  aria-label={`Ta bort ${l.name}`}
+                  className="text-text-muted hover:text-danger text-xs px-2 py-1.5 min-h-11 -my-1"
                 >
                   Ta bort
                 </button>
@@ -108,18 +117,22 @@ export default function AdminPage() {
         )}
 
         <div className="flex gap-2">
+          <label htmlFor="new-location-name" className="sr-only">
+            Ny plats
+          </label>
           <input
+            id="new-location-name"
             type="text"
             placeholder="Ny plats (t.ex. Hylla 4)"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
-            className="flex-1 rounded-md bg-surface-2 border border-border px-2 py-1.5 text-sm outline-none focus:border-accent"
+            className="flex-1 rounded-md bg-surface-2 border border-border px-2 py-2 text-sm focus:border-accent"
           />
           <button
             onClick={handleAdd}
             disabled={saving}
-            className="rounded-md bg-accent text-black px-3 py-1.5 text-sm font-medium disabled:opacity-50"
+            className="rounded-md bg-accent text-black px-3 py-2 min-h-11 text-sm font-medium disabled:opacity-50"
           >
             Lägg till
           </button>

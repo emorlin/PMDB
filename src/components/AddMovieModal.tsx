@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { searchMovies, getMovieDetails, posterUrl, type TmdbSearchResult } from '../lib/tmdb'
 import { getImdbRating } from '../lib/omdb'
 import { addMovie } from '../lib/movies'
@@ -21,6 +21,9 @@ interface Selected {
   posterPath: string | null
 }
 
+const FOCUSABLE_SELECTOR =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+
 export default function AddMovieModal({ onClose, onAdded }: Props) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<TmdbSearchResult[]>([])
@@ -32,6 +35,9 @@ export default function AddMovieModal({ onClose, onAdded }: Props) {
   const [myRating, setMyRating] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const panelRef = useRef<HTMLDivElement>(null)
+  const searchInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     listLocations()
@@ -57,6 +63,42 @@ export default function AddMovieModal({ onClose, onAdded }: Props) {
     }, 300)
     return () => clearTimeout(t)
   }, [query, selected])
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    searchInputRef.current?.focus()
+    return () => {
+      document.body.style.overflow = previousOverflow
+    }
+  }, [])
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        onClose()
+        return
+      }
+      if (e.key !== 'Tab') return
+      const panel = panelRef.current
+      if (!panel) return
+      const focusable = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
+        (el) => el.offsetParent !== null,
+      )
+      if (focusable.length === 0) return
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault()
+        first.focus()
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [onClose])
 
   async function pickResult(r: TmdbSearchResult) {
     setLoadingDetails(true)
@@ -110,99 +152,147 @@ export default function AddMovieModal({ onClose, onAdded }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center px-4 z-50">
-      <div className="bg-surface w-full max-w-md rounded-xl border border-border p-5">
+    <div
+      className="fixed inset-0 bg-black/50 flex items-center justify-center px-4 z-50"
+      onClick={onClose}
+    >
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="add-movie-title"
+        onClick={(e) => e.stopPropagation()}
+        className="bg-surface w-full max-w-md max-h-[90vh] overflow-y-auto rounded-xl border border-border p-5"
+      >
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-base font-medium">Lägg till film</h2>
-          <button onClick={onClose} className="text-text-muted hover:text-text" aria-label="Stäng">
-            ✕
+          <h2 id="add-movie-title" className="text-base font-medium">
+            Lägg till film
+          </h2>
+          <button
+            onClick={onClose}
+            className="text-text-muted hover:text-text p-1.5 -m-1.5 rounded-md"
+            aria-label="Stäng"
+          >
+            <span aria-hidden="true">✕</span>
           </button>
         </div>
 
         {!selected && (
           <>
+            <label htmlFor="movie-search" className="sr-only">
+              Sök filmtitel
+            </label>
             <input
-              autoFocus
+              ref={searchInputRef}
+              id="movie-search"
               type="text"
               placeholder="Sök filmtitel..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              className="w-full rounded-md bg-surface-2 border border-border px-3 py-2 text-sm outline-none focus:border-accent"
+              className="w-full rounded-md bg-surface-2 border border-border px-3 py-2 text-sm focus:border-accent"
             />
-            {(loadingResults || results.length > 0) && (
-              <div className="mt-1 border border-border rounded-md overflow-hidden max-h-64 overflow-y-auto">
-                {loadingResults && (
-                  <div className="px-3 py-2 text-xs text-text-muted">Söker...</div>
-                )}
-                {results.map((r) => (
-                  <button
-                    key={r.id}
-                    onClick={() => pickResult(r)}
-                    className="w-full flex items-center gap-3 px-3 py-2 text-left text-sm hover:bg-surface-2 border-b border-border last:border-b-0"
-                  >
-                    <div className="w-8 h-11 flex-shrink-0 bg-surface-2 rounded overflow-hidden">
-                      {posterUrl(r.poster_path, 'w92') && (
-                        <img
-                          src={posterUrl(r.poster_path, 'w92')!}
-                          alt=""
-                          className="w-full h-full object-cover"
-                        />
-                      )}
-                    </div>
-                    <div>
-                      <div className="font-medium">{r.title}</div>
-                      <div className="text-xs text-text-muted">
-                        {r.release_date ? r.release_date.slice(0, 4) : 'Okänt år'}
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
+            <div aria-live="polite">
+              {(loadingResults || results.length > 0) && (
+                <ul className="mt-1 border border-border rounded-md overflow-hidden max-h-64 overflow-y-auto">
+                  {loadingResults && (
+                    <li role="status" className="px-3 py-2 text-xs text-text-muted">
+                      Söker...
+                    </li>
+                  )}
+                  {results.map((r) => (
+                    <li key={r.id} className="border-b border-border last:border-b-0">
+                      <button
+                        onClick={() => pickResult(r)}
+                        className="w-full flex items-center gap-3 px-3 py-2 text-left text-sm hover:bg-surface-2"
+                      >
+                        <span className="w-8 h-11 shrink-0 bg-surface-2 rounded overflow-hidden block">
+                          {posterUrl(r.poster_path, 'w92') && (
+                            <img
+                              src={posterUrl(r.poster_path, 'w92')!}
+                              alt=""
+                              className="w-full h-full object-cover"
+                            />
+                          )}
+                        </span>
+                        <span>
+                          <span className="font-medium block">{r.title}</span>
+                          <span className="text-xs text-text-muted block">
+                            {r.release_date ? r.release_date.slice(0, 4) : 'Okänt år'}
+                          </span>
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </>
         )}
 
-        {loadingDetails && <div className="text-xs text-text-muted mt-2">Hämtar filminfo...</div>}
+        {loadingDetails && (
+          <div role="status" className="text-xs text-text-muted mt-2">
+            Hämtar filminfo...
+          </div>
+        )}
 
         {selected && (
           <div className="mt-2">
             <div className="text-xs text-text-muted mb-1">Automatiskt ifyllt</div>
-            <div className="grid grid-cols-2 gap-2 text-xs mb-3">
-              <div className="bg-surface-2 rounded-md px-2 py-1.5">{selected.title}</div>
+            <dl className="grid grid-cols-2 gap-2 text-xs mb-3">
               <div className="bg-surface-2 rounded-md px-2 py-1.5">
-                {selected.year ?? '–'}
+                <dt className="sr-only">Titel</dt>
+                <dd>{selected.title}</dd>
               </div>
               <div className="bg-surface-2 rounded-md px-2 py-1.5">
-                {selected.runtime_minutes ? `${selected.runtime_minutes} min` : '–'}
+                <dt className="sr-only">År</dt>
+                <dd>{selected.year ?? '–'}</dd>
               </div>
               <div className="bg-surface-2 rounded-md px-2 py-1.5">
-                IMDb: {selected.imdb_rating ?? '–'}
+                <dt className="sr-only">Speltid</dt>
+                <dd>{selected.runtime_minutes ? `${selected.runtime_minutes} min` : '–'}</dd>
               </div>
-            </div>
+              <div className="bg-surface-2 rounded-md px-2 py-1.5">
+                <dt className="sr-only">IMDb-rating</dt>
+                <dd>IMDb: {selected.imdb_rating ?? '–'}</dd>
+              </div>
+            </dl>
 
             <div className="text-xs text-text-muted mb-1">Fyll i manuellt</div>
             <div className="grid grid-cols-2 gap-2 mb-4">
-              <select
-                value={locationId}
-                onChange={(e) => setLocationId(e.target.value)}
-                className="rounded-md bg-surface-2 border border-border px-2 py-1.5 text-sm outline-none focus:border-accent"
-              >
-                <option value="">Välj plats...</option>
-                {locations.map((l) => (
-                  <option key={l.id} value={l.id}>
-                    {l.name}
-                  </option>
-                ))}
-              </select>
-              <input
-                type="number"
-                min={1}
-                max={10}
-                placeholder="Din rating (1-10)"
-                value={myRating}
-                onChange={(e) => setMyRating(e.target.value)}
-                className="rounded-md bg-surface-2 border border-border px-2 py-1.5 text-sm outline-none focus:border-accent"
-              />
+              <div>
+                <label htmlFor="movie-location" className="sr-only">
+                  Plats
+                </label>
+                <select
+                  id="movie-location"
+                  value={locationId}
+                  onChange={(e) => setLocationId(e.target.value)}
+                  className="w-full rounded-md bg-surface-2 border border-border px-2 py-1.5 text-sm focus:border-accent"
+                >
+                  <option value="">Välj plats...</option>
+                  {locations.map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="movie-rating" className="sr-only">
+                  Din rating, 1 till 10
+                </label>
+                <input
+                  id="movie-rating"
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={10}
+                  placeholder="Din rating (1-10)"
+                  value={myRating}
+                  onChange={(e) => setMyRating(e.target.value)}
+                  className="w-full rounded-md bg-surface-2 border border-border px-2 py-1.5 text-sm focus:border-accent"
+                />
+              </div>
             </div>
             {locations.length === 0 && (
               <div className="text-xs text-text-muted -mt-2 mb-4">
@@ -213,14 +303,14 @@ export default function AddMovieModal({ onClose, onAdded }: Props) {
             <div className="flex gap-2">
               <button
                 onClick={() => setSelected(null)}
-                className="flex-1 rounded-md border border-border py-2 text-sm hover:bg-surface-2"
+                className="flex-1 rounded-md border border-border py-2 min-h-11 text-sm hover:bg-surface-2"
               >
                 Byt film
               </button>
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="flex-1 rounded-md bg-accent text-black py-2 text-sm font-medium disabled:opacity-50"
+                className="flex-1 rounded-md bg-accent text-black py-2 min-h-11 text-sm font-medium disabled:opacity-50"
               >
                 {saving ? 'Sparar...' : 'Spara film'}
               </button>
@@ -228,7 +318,11 @@ export default function AddMovieModal({ onClose, onAdded }: Props) {
           </div>
         )}
 
-        {error && <div className="text-xs text-red-400 mt-3">{error}</div>}
+        {error && (
+          <div role="alert" className="text-xs text-danger mt-3">
+            {error}
+          </div>
+        )}
       </div>
     </div>
   )

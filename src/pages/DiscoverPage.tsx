@@ -63,7 +63,7 @@ export default function DiscoverPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-        <label className="flex items-center gap-2 text-sm">
+        <label className="flex items-center gap-2 text-sm min-h-11">
           <input
             type="checkbox"
             checked={onlyUnseen}
@@ -73,14 +73,16 @@ export default function DiscoverPage() {
         </label>
         <button
           onClick={handleShuffle}
-          className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-surface-2"
+          className="rounded-md border border-border px-3 py-2 min-h-11 text-sm hover:bg-surface-2"
         >
           Slumpa filmer
         </button>
       </div>
 
       {loading ? (
-        <div className="text-text-muted text-sm">Laddar...</div>
+        <div role="status" className="text-text-muted text-sm">
+          Laddar...
+        </div>
       ) : (
         <>
           <AlphabetFilter active={letter} onSelect={handleLetterSelect} disabled={!!randomOrder} />
@@ -89,25 +91,25 @@ export default function DiscoverPage() {
           </div>
 
           {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-3 mt-5 text-sm">
+            <nav aria-label="Sidnumrering" className="flex items-center justify-center gap-3 mt-5 text-sm">
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
-                className="rounded-md border border-border px-3 py-1 disabled:opacity-40"
+                className="rounded-md border border-border px-3 py-1.5 min-h-11 disabled:opacity-40"
               >
                 Föregående
               </button>
-              <span className="text-text-muted">
+              <span aria-live="polite" className="text-text-muted">
                 Sida {page} av {totalPages}
               </span>
               <button
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
-                className="rounded-md border border-border px-3 py-1 disabled:opacity-40"
+                className="rounded-md border border-border px-3 py-1.5 min-h-11 disabled:opacity-40"
               >
                 Nästa
               </button>
-            </div>
+            </nav>
           )}
         </>
       )}

@@ -33,30 +33,28 @@ export default function PosterGrid({ movies }: Props) {
     }
   }, [movies])
 
+  if (movies.length === 0) {
+    return (
+      <div className="text-center text-text-muted text-sm py-10 flex-1">Inga filmer matchar filtret.</div>
+    )
+  }
+
   return (
-    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3 flex-1">
+    <ul className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 flex-1">
       {movies.map((m) => (
-        <button
-          key={m.id}
-          onClick={() => navigate(`/movie/${m.id}`)}
-          className="text-left"
-          title={m.title}
-        >
-          <div className="aspect-[2/3] bg-surface-2 border border-border rounded-md overflow-hidden flex items-center justify-center">
-            {posters[m.id] ? (
-              <img src={posters[m.id]!} alt={m.title} className="w-full h-full object-cover" />
-            ) : (
-              <span className="text-xs text-text-muted text-center px-1">Ingen poster</span>
-            )}
-          </div>
-          <div className="text-xs mt-1 truncate text-text-muted">{m.title}</div>
-        </button>
+        <li key={m.id}>
+          <button onClick={() => navigate(`/movie/${m.id}`)} className="w-full text-left" title={m.title}>
+            <div className="aspect-2/3 bg-surface-2 border border-border rounded-md overflow-hidden flex items-center justify-center">
+              {posters[m.id] ? (
+                <img src={posters[m.id]!} alt={m.title} className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-xs text-text-muted text-center px-1">Ingen poster</span>
+              )}
+            </div>
+            <div className="text-xs mt-1 truncate text-text-muted">{m.title}</div>
+          </button>
+        </li>
       ))}
-      {movies.length === 0 && (
-        <div className="col-span-full text-center text-text-muted text-sm py-10">
-          Inga filmer matchar filtret.
-        </div>
-      )}
-    </div>
+    </ul>
   )
 }

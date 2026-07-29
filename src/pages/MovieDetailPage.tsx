@@ -79,8 +79,18 @@ export default function MovieDetailPage() {
     }
   }
 
-  if (loading) return <div className="text-text-muted text-sm">Laddar...</div>
-  if (error) return <div className="text-red-400 text-sm">{error}</div>
+  if (loading)
+    return (
+      <div role="status" className="text-text-muted text-sm">
+        Laddar...
+      </div>
+    )
+  if (error)
+    return (
+      <div role="alert" className="text-danger text-sm">
+        {error}
+      </div>
+    )
   if (!movie) return null
 
   const director = tmdb?.credits.crew.find((c) => c.job === 'Director')
@@ -88,8 +98,8 @@ export default function MovieDetailPage() {
 
   return (
     <div>
-      <div className="flex gap-6">
-        <div className="w-36 h-52 flex-shrink-0 bg-surface-2 rounded-lg border border-border overflow-hidden flex items-center justify-center">
+      <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
+        <div className="w-36 h-52 mx-auto sm:mx-0 shrink-0 bg-surface-2 rounded-lg border border-border overflow-hidden flex items-center justify-center">
           {tmdb && posterUrl(tmdb.poster_path) ? (
             <img
               src={posterUrl(tmdb.poster_path)!}
@@ -100,7 +110,7 @@ export default function MovieDetailPage() {
             <span className="text-xs text-text-muted text-center px-2">Ingen poster</span>
           )}
         </div>
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <h1 className="text-xl font-medium">{movie.title}</h1>
           <div className="text-sm text-text-muted mt-1 mb-3">
             {movie.year ?? '–'} · {formatRuntime(movie.runtime_minutes)}
@@ -113,24 +123,31 @@ export default function MovieDetailPage() {
           )}
 
           {editing ? (
-            <div className="flex gap-3 mb-3 items-end">
+            <div className="flex flex-wrap gap-3 mb-3 items-end">
               <div>
-                <div className="text-xs text-text-muted mb-1">Min rating</div>
+                <label htmlFor="edit-rating" className="block text-xs text-text-muted mb-1">
+                  Min rating
+                </label>
                 <input
+                  id="edit-rating"
                   type="number"
+                  inputMode="numeric"
                   min={1}
                   max={10}
                   value={editRating}
                   onChange={(e) => setEditRating(e.target.value)}
-                  className="w-20 rounded-md bg-surface-2 border border-border px-2 py-1 text-sm outline-none focus:border-accent"
+                  className="w-20 rounded-md bg-surface-2 border border-border px-2 py-1.5 text-sm focus:border-accent"
                 />
               </div>
               <div>
-                <div className="text-xs text-text-muted mb-1">Placering</div>
+                <label htmlFor="edit-location" className="block text-xs text-text-muted mb-1">
+                  Placering
+                </label>
                 <select
+                  id="edit-location"
                   value={editLocationId}
                   onChange={(e) => setEditLocationId(e.target.value)}
-                  className="w-36 rounded-md bg-surface-2 border border-border px-2 py-1 text-sm outline-none focus:border-accent"
+                  className="w-36 rounded-md bg-surface-2 border border-border px-2 py-1.5 text-sm focus:border-accent"
                 >
                   <option value="">Ingen</option>
                   {locations.map((l) => (
@@ -143,13 +160,13 @@ export default function MovieDetailPage() {
               <button
                 onClick={handleSaveEdit}
                 disabled={saving}
-                className="rounded-md bg-accent text-black px-3 py-1.5 text-sm font-medium disabled:opacity-50"
+                className="rounded-md bg-accent text-black px-3 py-2 min-h-11 text-sm font-medium disabled:opacity-50"
               >
                 {saving ? 'Sparar...' : 'Spara'}
               </button>
               <button
                 onClick={() => setEditing(false)}
-                className="rounded-md border border-border px-3 py-1.5 text-sm"
+                className="rounded-md border border-border px-3 py-2 min-h-11 text-sm"
               >
                 Avbryt
               </button>
@@ -199,13 +216,13 @@ export default function MovieDetailPage() {
         <div className="mt-5 flex gap-2">
           <button
             onClick={startEdit}
-            className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-surface-2"
+            className="rounded-md border border-border px-3 py-2 min-h-11 text-sm hover:bg-surface-2"
           >
             Redigera
           </button>
           <button
             onClick={handleDelete}
-            className="rounded-md border border-border px-3 py-1.5 text-sm text-red-400 hover:bg-surface-2"
+            className="rounded-md border border-border px-3 py-2 min-h-11 text-sm text-danger hover:bg-surface-2"
           >
             Ta bort
           </button>

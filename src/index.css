@@ -9,6 +9,10 @@
   --text: #16171d;
   --text-muted: #6b7280;
   --accent: #b8742f;
+  /* Darker than --accent: meets 4.5:1 text contrast on light backgrounds (--accent itself only hits ~3.9:1 as text) */
+  --accent-text: #92400e;
+  --danger: #dc2626;
+  --focus: var(--accent-text);
 }
 
 .dark {
@@ -19,6 +23,9 @@
   --text: #e6e6e6;
   --text-muted: #9aa0ab;
   --accent: #e0a95c;
+  --accent-text: #e0a95c;
+  --danger: #f87171;
+  --focus: var(--accent);
 }
 
 @theme {
@@ -29,6 +36,8 @@
   --color-text: var(--text);
   --color-text-muted: var(--text-muted);
   --color-accent: var(--accent);
+  --color-accent-text: var(--accent-text);
+  --color-danger: var(--danger);
 }
 
 html,
@@ -42,4 +51,24 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+}
+
+*:focus {
+  outline: none;
+}
+
+*:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

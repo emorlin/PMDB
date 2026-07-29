@@ -40,19 +40,25 @@ export default function MovieTablePage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
         <h1 className="text-lg font-medium">Min filmsamling</h1>
         <button
           onClick={() => setShowAdd(true)}
-          className="rounded-md bg-accent text-black px-3 py-1.5 text-sm font-medium"
+          className="rounded-md bg-accent text-black px-3 py-2 min-h-11 text-sm font-medium"
         >
           + Lägg till film
         </button>
       </div>
 
-      {error && <div className="text-sm text-red-400 mb-3">{error}</div>}
+      {error && (
+        <div role="alert" className="text-sm text-danger mb-3">
+          {error}
+        </div>
+      )}
       {loading ? (
-        <div className="text-text-muted text-sm">Laddar...</div>
+        <div role="status" className="text-text-muted text-sm">
+          Laddar...
+        </div>
       ) : (
         <MovieTable movies={movies} sort={sort} dir={dir} onSort={handleSort} />
       )}
