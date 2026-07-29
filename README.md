@@ -50,6 +50,7 @@ Byggd som ett litet, fokuserat projekt: en användare, en samling, inget cachnin
 | **Matcha mot TMDB i efterhand** | Filmer utan `tmdb_id` (t.ex. CSV-importerade) öppnar automatiskt en sökmodal på detaljsidan så de kan kopplas till TMDB/IMDb senare – utan att röra egen rating eller plats |
 | **Upptäck-vy** | Rutnät av den egna samlingen (inte nya filmer att köpa): bokstavsfilter (horisontell A–Ö-rad på desktop, dropdown på mobil), "endast osedda"-filter, slumpknapp, klassisk sidpaginering (48/sida) |
 | **Inställningar** | Hantera platser – lägg till/ta bort (blockeras om platsen används av en film) – samt ljust/mörkt tema (sparas i `localStorage`) |
+| **Om** | Kort, användarvänlig info om appen och dess funktioner, med länk till källkoden på GitHub |
 | **Tillgänglighet** | WCAG 2.1 AA: tangentbordsnavigerbar sorterbar tabell, dialog-semantik + fokusfälla i modaler, skip-länk, live-regioner, kontrollerad färgkontrast – se [eget avsnitt](#tillgänglighet) |
 
 ---
@@ -127,7 +128,8 @@ PMDB/
 │   │   ├── MovieTablePage.tsx       # "/" – tabellvy + lägg till film
 │   │   ├── DiscoverPage.tsx         # "/discover" – upptäck egen samling
 │   │   ├── MovieDetailPage.tsx      # "/movie/:id" – detaljvy, redigera, ta bort, matcha
-│   │   └── AdminPage.tsx            # "/admin" – platser + tema
+│   │   ├── AdminPage.tsx            # "/admin" – platser + tema
+│   │   └── AboutPage.tsx            # "/om" – info om appen + GitHub-länk
 │   ├── lib/
 │   │   ├── supabase.ts              # Klient, schema "pmdb"
 │   │   ├── movies.ts                # CRUD mot pmdb.movies
@@ -187,6 +189,11 @@ create unique index movies_user_tmdb_unique on pmdb.movies (user_id, tmdb_id);
 ```
 
 Byggs upp av tre migrationer i `supabase/migrations/`: `0001_init.sql` skapar schemat och `movies`, `0002_locations.sql` lägger till `locations` och byter `movies.location` (fri text) mot `location_id` (FK), `0003_optional_tmdb.sql` gör `tmdb_id`/`imdb_id` valfria så CSV-importerade filmer kan sparas utan TMDB-matchning. `movies_user_tmdb_unique` är fortfarande giltig med `tmdb_id = null`, eftersom Postgres unika index behandlar `NULL` som distinkta värden – flera omatchade filmer kan alltså samexistera.
+
+### Två PostgREST-fallgropar i `listMovies()`
+
+- **Sortering på `location`** – `locations` hämtas embeddat (`location:locations(name)`). `supabase-js`s `order(col, { referencedTable })` sorterar bara rader *inuti* en till-många-relation; för en till-en-relation som denna har den ingen effekt på föräldraradernas ordning alls (`!inner` hade fixat det, men hade samtidigt uteslutit alla filmer utan plats ur listan). `listMovies()` sorterar därför på `location.name` i klienten istället.
+- **Rad-gräns på 1000** – PostgREST svarar med max 1000 rader per anrop om man inte sidbryter själv. Vid ~1250 filmer (sorterade på titel) föll allt efter rad 1000 tyst bort – i praktiken nästan alla titlar från sent i alfabetet. `listMovies()` sidbryter nu i loop med `.range()` (1000 åt gången, med `id` som sekundär sorteringsnyckel för deterministisk sidbrytning) tills hela samlingen hämtats.
 
 ---
 
@@ -366,15 +373,22 @@ npx vercel --prod
 
 Kopplas repot till GitHub (Vercel → Settings → Git) sker deploy automatiskt vid varje push till main istället.
 
-`vercel.json` innehåller en SPA-rewrite som skickar alla routes till `index.html`:
+`vercel.json` innehåller SPA-rewrites som skickar varje route till `index.html`:
 
 ```json
 {
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "rewrites": [
+    { "source": "/discover", "destination": "/index.html" },
+    { "source": "/admin", "destination": "/index.html" },
+    { "source": "/om", "destination": "/index.html" },
+    { "source": "/movie/:id", "destination": "/index.html" }
+  ]
 }
 ```
 
-Utan den svarar Vercel 404 vid direktladdning eller omladdning av allt utom startsidan (t.ex. `/movie/:id` eller `/discover`) – en vanlig fallgrop för SPA:er utan ett ramverk som hanterar routingen åt en. Vercel matchar statiska filer och serverless-funktioner (`/api/*`) före rewrites, så API-proxyn påverkas inte av regeln.
+Utan detta svarar Vercel 404 vid direktladdning eller omladdning av allt utom startsidan – en vanlig fallgrop för SPA:er utan ett ramverk som hanterar routingen åt en. Lägg till en ny rad här varje gång en ny toppnivå-route läggs till i `App.tsx`.
+
+Rewrites är medvetet en **explicit lista** och inte en wildcard (`"source": "/(.*)"`), trots att det är det vanligaste mönstret för Vite-SPA:er på Vercel. Anledningen: `vercel dev` kör samma rewrites lokalt, men i dev-läge är `src/main.tsx`, `/@vite/client` m.fl. inte riktiga filer på disk (de serveras dynamiskt av Vite) – en wildcard-rewrite fångar då även dem och skickar `index.html` istället för riktig JS till dem, vilket kraschar hela dev-servern. En explicit lista över appens faktiska routes träffar aldrig Vites interna sökvägar eller `/api/*`, och fungerar identiskt i produktion där Vercel ändå matchar de riktiga byggda filerna i `dist/` före rewrites.
 
 ---
 
