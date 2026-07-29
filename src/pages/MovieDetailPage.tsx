@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { getMovie, deleteMovie, updateMovie } from '../lib/movies'
 import { getMovieDetails, posterUrl, type TmdbMovieDetails } from '../lib/tmdb'
 import { listLocations } from '../lib/locations'
+import MatchMovieModal from '../components/MatchMovieModal'
 import type { Movie } from '../types/movie'
 import type { Location } from '../types/location'
 
@@ -25,6 +26,7 @@ export default function MovieDetailPage() {
   const [editLocationId, setEditLocationId] = useState('')
   const [locations, setLocations] = useState<Location[]>([])
   const [saving, setSaving] = useState(false)
+  const [showMatchModal, setShowMatchModal] = useState(false)
 
   useEffect(() => {
     listLocations()
@@ -36,17 +38,31 @@ export default function MovieDetailPage() {
     if (!id) return
     setLoading(true)
     setError(null)
+    setTmdb(null)
     getMovie(id)
-      .then(async (m) => {
+      .then((m) => {
         setMovie(m)
-        if (m.tmdb_id != null) {
-          const details = await getMovieDetails(m.tmdb_id)
-          setTmdb(details)
-        }
+        setShowMatchModal(m.tmdb_id == null)
       })
       .catch((e) => setError((e as Error).message))
       .finally(() => setLoading(false))
   }, [id])
+
+  useEffect(() => {
+    if (movie?.tmdb_id == null) {
+      setTmdb(null)
+      return
+    }
+    let cancelled = false
+    getMovieDetails(movie.tmdb_id)
+      .then((details) => {
+        if (!cancelled) setTmdb(details)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [movie?.tmdb_id])
 
   async function handleDelete() {
     if (!movie) return
@@ -117,8 +133,14 @@ export default function MovieDetailPage() {
             {tmdb && tmdb.genres.length > 0 && ' · ' + tmdb.genres.map((g) => g.name).join(', ')}
           </div>
           {movie.tmdb_id == null && (
-            <div className="text-xs text-text-muted bg-surface-2 border border-border rounded-md px-2 py-1 mb-3 inline-block">
-              Inte matchad mot TMDB ännu – handling, skådespelare och genre saknas.
+            <div className="flex items-center gap-2 flex-wrap text-xs text-text-muted bg-surface-2 border border-border rounded-md px-2 py-1.5 mb-3">
+              <span>Inte matchad mot TMDB ännu – handling, skådespelare och genre saknas.</span>
+              <button
+                onClick={() => setShowMatchModal(true)}
+                className="rounded-md border border-border px-2 py-1.5 min-h-8 text-xs text-text hover:bg-surface"
+              >
+                Matcha mot TMDB
+              </button>
             </div>
           )}
 
@@ -227,6 +249,14 @@ export default function MovieDetailPage() {
             Ta bort
           </button>
         </div>
+      )}
+
+      {showMatchModal && (
+        <MatchMovieModal
+          movie={movie}
+          onClose={() => setShowMatchModal(false)}
+          onMatched={(updated) => setMovie(updated)}
+        />
       )}
     </div>
   )
