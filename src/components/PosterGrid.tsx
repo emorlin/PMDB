@@ -9,18 +9,19 @@ interface Props {
 
 export default function PosterGrid({ movies }: Props) {
   const navigate = useNavigate()
-  const [posters, setPosters] = useState<Record<number, string | null>>({})
+  const [posters, setPosters] = useState<Record<string, string | null>>({})
 
   useEffect(() => {
     let cancelled = false
     setPosters({})
     Promise.all(
       movies.map(async (m) => {
+        if (m.tmdb_id == null) return [m.id, null] as const
         try {
           const d = await getMovieDetails(m.tmdb_id)
-          return [m.tmdb_id, posterUrl(d.poster_path)] as const
+          return [m.id, posterUrl(d.poster_path)] as const
         } catch {
-          return [m.tmdb_id, null] as const
+          return [m.id, null] as const
         }
       }),
     ).then((entries) => {
@@ -41,9 +42,11 @@ export default function PosterGrid({ movies }: Props) {
           className="text-left"
           title={m.title}
         >
-          <div className="aspect-[2/3] bg-surface-2 border border-border rounded-md overflow-hidden">
-            {posters[m.tmdb_id] && (
-              <img src={posters[m.tmdb_id]!} alt={m.title} className="w-full h-full object-cover" />
+          <div className="aspect-[2/3] bg-surface-2 border border-border rounded-md overflow-hidden flex items-center justify-center">
+            {posters[m.id] ? (
+              <img src={posters[m.id]!} alt={m.title} className="w-full h-full object-cover" />
+            ) : (
+              <span className="text-xs text-text-muted text-center px-1">Ingen poster</span>
             )}
           </div>
           <div className="text-xs mt-1 truncate text-text-muted">{m.title}</div>

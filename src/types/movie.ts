@@ -1,8 +1,8 @@
 export interface Movie {
   id: string
   user_id: string
-  tmdb_id: number
-  imdb_id: string
+  tmdb_id: number | null
+  imdb_id: string | null
   title: string
   year: number | null
   runtime_minutes: number | null

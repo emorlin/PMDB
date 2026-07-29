@@ -39,8 +39,10 @@ export default function MovieDetailPage() {
     getMovie(id)
       .then(async (m) => {
         setMovie(m)
-        const details = await getMovieDetails(m.tmdb_id)
-        setTmdb(details)
+        if (m.tmdb_id != null) {
+          const details = await getMovieDetails(m.tmdb_id)
+          setTmdb(details)
+        }
       })
       .catch((e) => setError((e as Error).message))
       .finally(() => setLoading(false))
@@ -87,13 +89,15 @@ export default function MovieDetailPage() {
   return (
     <div>
       <div className="flex gap-6">
-        <div className="w-36 h-52 flex-shrink-0 bg-surface-2 rounded-lg border border-border overflow-hidden">
-          {posterUrl(tmdb?.poster_path ?? null) && (
+        <div className="w-36 h-52 flex-shrink-0 bg-surface-2 rounded-lg border border-border overflow-hidden flex items-center justify-center">
+          {tmdb && posterUrl(tmdb.poster_path) ? (
             <img
-              src={posterUrl(tmdb!.poster_path)!}
+              src={posterUrl(tmdb.poster_path)!}
               alt={movie.title}
               className="w-full h-full object-cover"
             />
+          ) : (
+            <span className="text-xs text-text-muted text-center px-2">Ingen poster</span>
           )}
         </div>
         <div className="flex-1">
@@ -102,6 +106,11 @@ export default function MovieDetailPage() {
             {movie.year ?? '–'} · {formatRuntime(movie.runtime_minutes)}
             {tmdb && tmdb.genres.length > 0 && ' · ' + tmdb.genres.map((g) => g.name).join(', ')}
           </div>
+          {movie.tmdb_id == null && (
+            <div className="text-xs text-text-muted bg-surface-2 border border-border rounded-md px-2 py-1 mb-3 inline-block">
+              Inte matchad mot TMDB ännu – handling, skådespelare och genre saknas.
+            </div>
+          )}
 
           {editing ? (
             <div className="flex gap-3 mb-3 items-end">

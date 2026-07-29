@@ -9,4 +9,9 @@ if (!supabaseUrl || !supabaseAnonKey) {
   )
 }
 
-export const supabase = createClient(supabaseUrl ?? '', supabaseAnonKey ?? '')
+// Egna schema "pmdb" istället för public, eftersom databasen delas med
+// andra projekt. Måste även läggas till under Project Settings -> API ->
+// Data API Settings -> Exposed schemas i Supabase-dashboarden (se README).
+export const supabase = createClient(supabaseUrl ?? '', supabaseAnonKey ?? '', {
+  db: { schema: 'pmdb' },
+})
