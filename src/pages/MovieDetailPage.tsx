@@ -1,0 +1,192 @@
+import { useEffect, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { getMovie, deleteMovie, updateMovie } from '../lib/movies'
+import { getMovieDetails, posterUrl, type TmdbMovieDetails } from '../lib/tmdb'
+import type { Movie } from '../types/movie'
+
+function formatRuntime(min: number | null) {
+  if (!min) return '–'
+  const h = Math.floor(min / 60)
+  const m = min % 60
+  return `${h}h ${m.toString().padStart(2, '0')}min`
+}
+
+export default function MovieDetailPage() {
+  const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
+  const [movie, setMovie] = useState<Movie | null>(null)
+  const [tmdb, setTmdb] = useState<TmdbMovieDetails | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [editing, setEditing] = useState(false)
+  const [editRating, setEditRating] = useState('')
+  const [editLocation, setEditLocation] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    if (!id) return
+    setLoading(true)
+    setError(null)
+    getMovie(id)
+      .then(async (m) => {
+        setMovie(m)
+        const details = await getMovieDetails(m.tmdb_id)
+        setTmdb(details)
+      })
+      .catch((e) => setError((e as Error).message))
+      .finally(() => setLoading(false))
+  }, [id])
+
+  async function handleDelete() {
+    if (!movie) return
+    if (!confirm(`Ta bort "${movie.title}" från samlingen?`)) return
+    await deleteMovie(movie.id)
+    navigate('/')
+  }
+
+  function startEdit() {
+    if (!movie) return
+    setEditRating(movie.my_rating?.toString() ?? '')
+    setEditLocation(movie.location ?? '')
+    setEditing(true)
+  }
+
+  async function handleSaveEdit() {
+    if (!movie) return
+    setSaving(true)
+    try {
+      const updated = await updateMovie(movie.id, {
+        my_rating: editRating ? parseInt(editRating, 10) : null,
+        location: editLocation || null,
+      })
+      setMovie(updated)
+      setEditing(false)
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading) return <div className="text-text-muted text-sm">Laddar...</div>
+  if (error) return <div className="text-red-400 text-sm">{error}</div>
+  if (!movie) return null
+
+  const director = tmdb?.credits.crew.find((c) => c.job === 'Director')
+  const cast = tmdb?.credits.cast.slice(0, 6) ?? []
+
+  return (
+    <div>
+      <div className="flex gap-6">
+        <div className="w-36 h-52 flex-shrink-0 bg-surface-2 rounded-lg border border-border overflow-hidden">
+          {posterUrl(tmdb?.poster_path ?? null) && (
+            <img
+              src={posterUrl(tmdb!.poster_path)!}
+              alt={movie.title}
+              className="w-full h-full object-cover"
+            />
+          )}
+        </div>
+        <div className="flex-1">
+          <h1 className="text-xl font-medium">{movie.title}</h1>
+          <div className="text-sm text-text-muted mt-1 mb-3">
+            {movie.year ?? '–'} · {formatRuntime(movie.runtime_minutes)}
+            {tmdb && tmdb.genres.length > 0 && ' · ' + tmdb.genres.map((g) => g.name).join(', ')}
+          </div>
+
+          {editing ? (
+            <div className="flex gap-3 mb-3 items-end">
+              <div>
+                <div className="text-xs text-text-muted mb-1">Min rating</div>
+                <input
+                  type="number"
+                  min={1}
+                  max={10}
+                  value={editRating}
+                  onChange={(e) => setEditRating(e.target.value)}
+                  className="w-20 rounded-md bg-surface-2 border border-border px-2 py-1 text-sm outline-none focus:border-accent"
+                />
+              </div>
+              <div>
+                <div className="text-xs text-text-muted mb-1">Placering</div>
+                <input
+                  type="text"
+                  value={editLocation}
+                  onChange={(e) => setEditLocation(e.target.value)}
+                  className="w-32 rounded-md bg-surface-2 border border-border px-2 py-1 text-sm outline-none focus:border-accent"
+                />
+              </div>
+              <button
+                onClick={handleSaveEdit}
+                disabled={saving}
+                className="rounded-md bg-accent text-black px-3 py-1.5 text-sm font-medium disabled:opacity-50"
+              >
+                {saving ? 'Sparar...' : 'Spara'}
+              </button>
+              <button
+                onClick={() => setEditing(false)}
+                className="rounded-md border border-border px-3 py-1.5 text-sm"
+              >
+                Avbryt
+              </button>
+            </div>
+          ) : (
+            <div className="flex gap-6 mb-3">
+              <div>
+                <div className="text-xs text-text-muted">Min rating</div>
+                <div className="text-lg font-medium">{movie.my_rating ?? '–'}</div>
+              </div>
+              <div>
+                <div className="text-xs text-text-muted">IMDb</div>
+                <div className="text-lg font-medium">{movie.imdb_rating ?? '–'}</div>
+              </div>
+              <div>
+                <div className="text-xs text-text-muted">Placering</div>
+                <div className="text-lg font-medium">{movie.location ?? '–'}</div>
+              </div>
+            </div>
+          )}
+
+          {tmdb?.overview && (
+            <p className="text-sm text-text-muted max-w-lg leading-relaxed">{tmdb.overview}</p>
+          )}
+        </div>
+      </div>
+
+      {(director || cast.length > 0) && (
+        <div className="mt-5 pt-4 border-t border-border">
+          <div className="text-xs text-text-muted mb-2">Skådespelare & regissör</div>
+          <div className="flex flex-wrap gap-2">
+            {director && (
+              <span className="rounded-full border border-border px-3 py-1 text-xs">
+                Regissör: {director.name}
+              </span>
+            )}
+            {cast.map((c) => (
+              <span key={c.name} className="rounded-full border border-border px-3 py-1 text-xs">
+                {c.name}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {!editing && (
+        <div className="mt-5 flex gap-2">
+          <button
+            onClick={startEdit}
+            className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-surface-2"
+          >
+            Redigera
+          </button>
+          <button
+            onClick={handleDelete}
+            className="rounded-md border border-border px-3 py-1.5 text-sm text-red-400 hover:bg-surface-2"
+          >
+            Ta bort
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
