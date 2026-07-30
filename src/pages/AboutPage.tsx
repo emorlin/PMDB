@@ -3,23 +3,23 @@ const GITHUB_URL = 'https://github.com/emorlin/PMDB'
 const FEATURES = [
   {
     title: 'Tabellvy',
-    text: 'Hela samlingen i en sorterbar tabell – titel, år, rating, IMDb-betyg, speltid och placering.',
+    text: 'Hela samlingen i en sorterbar tabell – titel, år, rating, IMDb-betyg, speltid och placering. Sök på titel i realtid, filtrera på "endast osedda", och se antal filmer/osedda i två små statistikrutor.',
   },
   {
     title: 'Upptäck',
-    text: 'Bläddra i samlingen som ett postergrid, filtrera på bokstav eller slumpa fram en film att se.',
+    text: 'Bläddra i samlingen som ett postergrid, filtrera på bokstav eller slumpa fram en film att se. Bokstav och sida sparas i webbadressen, så en vy går att länka eller bokmärka.',
   },
   {
     title: 'Lägg till film',
-    text: 'Sök upp filmen på TMDB – år, speltid och IMDb-betyg fylls i automatiskt. Du väljer bara plats och din egen rating.',
+    text: 'Sök upp filmen på TMDB – år, speltid och IMDb-betyg fylls i automatiskt. Du väljer bara plats och din egen rating. Kräver inloggning.',
   },
   {
     title: 'Matcha mot TMDB',
-    text: 'Äldre filmer som saknar TMDB-koppling går att matcha i efterhand direkt från filmens sida, så poster och handling dyker upp.',
+    text: 'Äldre filmer som saknar TMDB-koppling går att matcha i efterhand direkt från filmens sida, så poster och handling dyker upp. Kräver inloggning.',
   },
   {
     title: 'Inställningar',
-    text: 'Hantera platserna filmerna står på och växla mellan ljust och mörkt tema.',
+    text: 'Växla mellan ljust och mörkt tema, samt hantera platserna filmerna står på (kräver inloggning).',
   },
 ]
 
@@ -54,11 +54,20 @@ export default function AboutPage() {
         </dl>
       </section>
 
+      <section className="mb-6">
+        <h2 className="text-sm font-medium text-text-muted mb-2">Inloggning</h2>
+        <p className="text-sm text-text-muted leading-relaxed">
+          Att bläddra, sortera, söka och filtrera i samlingen är öppet för alla. För att lägga
+          till, redigera, matcha eller ta bort filmer, eller hantera platser, krävs inloggning med
+          Google.
+        </p>
+      </section>
+
       <section>
         <h2 className="text-sm font-medium text-text-muted mb-2">Källkod</h2>
         <p className="text-sm text-text-muted leading-relaxed mb-2">
-          Byggd med React, TypeScript, Tailwind CSS och Supabase, driftsatt på Vercel. Koden är
-          öppen på GitHub.
+          Byggd med React, TypeScript, Tailwind CSS, Supabase och Clerk, driftsatt på Vercel. Koden
+          är öppen på GitHub.
         </p>
         <a
           href={GITHUB_URL}

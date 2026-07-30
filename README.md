@@ -7,6 +7,7 @@
 ![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-38BDF8?logo=tailwindcss&logoColor=white)
 ![Supabase](https://img.shields.io/badge/Supabase-Postgres-3ECF8E?logo=supabase&logoColor=white)
+![Clerk](https://img.shields.io/badge/Auth-Clerk-6C47FF?logo=clerk&logoColor=white)
 ![Vercel](https://img.shields.io/badge/Deploy-Vercel-000000?logo=vercel&logoColor=white)
 
 ---
@@ -20,6 +21,7 @@
 - [Projektstruktur](#projektstruktur)
 - [Databasmodell](#databasmodell)
 - [Säkerhet](#säkerhet)
+- [Inloggning & behörighet](#inloggning--behörighet)
 - [Responsiv design](#responsiv-design)
 - [Tillgänglighet](#tillgänglighet)
 - [Importera befintlig samling & matcha mot TMDB](#importera-befintlig-samling--matcha-mot-tmdb)
@@ -44,13 +46,14 @@ Byggd som ett litet, fokuserat projekt: en användare, en samling, inget cachnin
 
 | Funktion | Beskrivning |
 |---|---|
-| **Tabellvy** | Startsida: Titel, År, Rating, IMDb-rating, Tid, Placering – sorterbara kolumner (klick eller tangentbord). Blir en kortlista med egen sorteringskontroll under `md`-brytpunkten |
-| **Detaljsida** | Poster, handling, skådespelare, regissör och genre hämtas alltid live från TMDB (aldrig cachat i databasen). Egen rating, IMDb-rating och placering visas/redigeras, med redigera- och ta bort-funktion |
-| **Lägg till film** | Sökmodal mot TMDB, autofyller år/speltid/IMDb-rating; plats och egen rating (1–10) fylls i manuellt. Man hamnar direkt på filmens detaljsida efter tillägg |
-| **Matcha mot TMDB i efterhand** | Filmer utan `tmdb_id` (t.ex. CSV-importerade) öppnar automatiskt en sökmodal på detaljsidan så de kan kopplas till TMDB/IMDb senare – utan att röra egen rating eller plats |
-| **Upptäck-vy** | Rutnät av den egna samlingen (inte nya filmer att köpa): bokstavsfilter (horisontell A–Ö-rad på desktop, dropdown på mobil), "endast osedda"-filter, slumpknapp, klassisk sidpaginering (48/sida) |
-| **Inställningar** | Hantera platser – lägg till/ta bort (blockeras om platsen används av en film) – samt ljust/mörkt tema (sparas i `localStorage`) |
+| **Tabellvy** | Startsida: Titel, År, Rating, IMDb-rating, Tid, Placering – sorterbara kolumner (klick eller tangentbord). Realtidssökning på titel, "endast osedda"-filter, och två statistikrutor (antal filmer / antal osedda). Blir en kortlista med egen sorteringskontroll under `md`-brytpunkten |
+| **Detaljsida** | Poster, handling, skådespelare, regissör och genre hämtas alltid live från TMDB (aldrig cachat i databasen). Egen rating, IMDb-rating och placering visas/redigeras, med redigera- och ta bort-funktion (kräver inloggning) |
+| **Lägg till film** | Sökmodal mot TMDB, autofyller år/speltid/IMDb-rating; plats och egen rating (1–10) fylls i manuellt. Man hamnar direkt på filmens detaljsida efter tillägg. Kräver inloggning |
+| **Matcha mot TMDB i efterhand** | Filmer utan `tmdb_id` (t.ex. CSV-importerade) öppnar automatiskt en sökmodal på detaljsidan så de kan kopplas till TMDB/IMDb senare – utan att röra egen rating eller plats. Kräver inloggning |
+| **Upptäck-vy** | Rutnät av den egna samlingen (inte nya filmer att köpa): bokstavsfilter (horisontell A–Ö-rad på desktop, dropdown på mobil), "endast osedda"-filter, slumpknapp, klassisk sidpaginering (48/sida). Bokstav och sidnummer ligger i URL:en (`?letter=B&page=2`) – delbart och webbläsarhistorik fungerar |
+| **Inställningar** | Hantera platser – lägg till/ta bort (blockeras om platsen används av en film, kräver inloggning) – samt ljust/mörkt tema (sparas i `localStorage`) |
 | **Om** | Kort, användarvänlig info om appen och dess funktioner, med länk till källkoden på GitHub |
+| **Inloggning** | Google-inloggning (via Clerk) krävs för att lägga till, redigera, matcha eller ta bort filmer, samt hantera platser. Bläddra, söka och filtrera är öppet för alla – se [eget avsnitt](#inloggning--behörighet) |
 | **Tillgänglighet** | WCAG 2.1 AA: tangentbordsnavigerbar sorterbar tabell, dialog-semantik + fokusfälla i modaler, skip-länk, live-regioner, kontrollerad färgkontrast – se [eget avsnitt](#tillgänglighet) |
 
 ---
@@ -65,6 +68,8 @@ Byggd som ett litet, fokuserat projekt: en användare, en samling, inget cachnin
 | Tailwind CSS | 4 | Utility-first CSS, CSS-first config (`@theme` i `index.css`, ingen `tailwind.config.*`) |
 | React Router | 7 | Klientbaserad routing med `Outlet`-mönster |
 | @supabase/supabase-js | 2 | Typat klient-API mot Postgres |
+| @clerk/clerk-react | 5 | Inloggning (Google) i klienten – `SignedIn`/`SignedOut`/`UserButton` |
+| @clerk/backend | 3 | Verifierar Clerk-sessioner server-side i `api/movies.ts`/`api/locations.ts` |
 | @vercel/node | 5 | Typer för Vercel Functions (`api/*.ts`) |
 | oxlint | 1 | Rust-baserad linter, snabbare alternativ till ESLint |
 | Vercel | – | Statisk hosting + serverless-funktioner för API-proxyn |
@@ -81,10 +86,11 @@ Ingen server-state-cache (t.ex. React Query) används – appen är liten nog at
 │  React-komponenter · Tailwind CSS · React Router      │
 ├───────────────────────────────────────────────────────┤
 │  Datalager  (src/lib/movies.ts, locations.ts, …)      │
-│  Rena async-funktioner mot Supabase-klienten           │
+│  Läsning: direkt mot Supabase · Skrivning: via API     │
 ├───────────────────────────────────────────────────────┤
 │  Serverless proxy  (api/*.ts, Vercel Functions)        │
-│  Döljer TMDB_API_KEY / OMDB_API_KEY för klienten        │
+│  tmdb-*/omdb-rating: döljer API-nycklar                │
+│  movies/locations: kräver verifierad Clerk-session     │
 ├───────────────────────────────────────────────────────┤
 │  Databas  (Supabase / Postgres, schema "pmdb")         │
 │  movies · locations                                    │
@@ -95,7 +101,7 @@ Ingen server-state-cache (t.ex. React Query) används – appen är liten nog at
 
 1. Sökfältet i `AddMovieModal` anropar `GET /api/tmdb-search` via proxyn (klienten ser aldrig `TMDB_API_KEY`)
 2. Vald träff hämtar fulla detaljer via `/api/tmdb-movie` samt IMDb-betyg via `/api/omdb-rating`
-3. `addMovie()` skriver raden till `pmdb.movies` i Supabase
+3. `addMovie()` hämtar en Clerk-token (`useAuth().getToken()`) och skickar den som `Authorization: Bearer …` till `POST /api/movies`, som verifierar sessionen och skriver raden till `pmdb.movies`
 4. Appen navigerar direkt till filmens detaljsida (`/movie/:id`)
 
 **Dataflöde när en detaljsida visas:**
@@ -112,37 +118,44 @@ Ingen server-state-cache (t.ex. React Query) används – appen är liten nog at
 PMDB/
 ├── api/
 │   ├── _lib/
-│   │   └── auth.ts                  # Delad hemlighet-koll (requireProxySecret)
+│   │   ├── auth.ts                  # Delad hemlighet-koll (requireProxySecret) för TMDB/OMDb
+│   │   ├── clerkAuth.ts             # Verifierar Clerk-token (requireClerkAuth)
+│   │   └── supabase.ts              # Server-side Supabase-klient för movies.ts/locations.ts
 │   ├── tmdb-search.ts               # Proxy: TMDB-sökning
 │   ├── tmdb-movie.ts                # Proxy: filmdetaljer + credits/external_ids
-│   └── omdb-rating.ts               # Proxy: IMDb-rating via OMDb
+│   ├── omdb-rating.ts               # Proxy: IMDb-rating via OMDb
+│   ├── movies.ts                    # Skyddad: POST/PATCH/DELETE mot pmdb.movies
+│   └── locations.ts                 # Skyddad: POST/DELETE mot pmdb.locations
+├── public/
+│   ├── logo.png                     # Logotyp, ljust tema
+│   └── logo-dark.png                # Logotyp, mörkt tema
 ├── src/
 │   ├── components/
 │   │   ├── AddMovieModal.tsx        # Sök + lägg till ny film (dialog, fokusfälla)
 │   │   ├── MatchMovieModal.tsx      # Matcha en befintlig film mot TMDB i efterhand
-│   │   ├── AppLayout.tsx            # Header, nav, skip-länk, <Outlet />
+│   │   ├── AppLayout.tsx            # Header, nav, inloggningsknapp, footer, <Outlet />
 │   │   ├── MovieTable.tsx           # Sorterbar tabell (desktop) / kortlista (mobil)
 │   │   ├── AlphabetFilter.tsx       # A–Ö-filter: horisontell rad (desktop) / dropdown (mobil)
 │   │   └── PosterGrid.tsx           # Responsivt postergrid för Upptäck-vyn
 │   ├── pages/
-│   │   ├── MovieTablePage.tsx       # "/" – tabellvy + lägg till film
-│   │   ├── DiscoverPage.tsx         # "/discover" – upptäck egen samling
+│   │   ├── MovieTablePage.tsx       # "/" – tabellvy, sök, statistik, lägg till film
+│   │   ├── DiscoverPage.tsx         # "/discover" – upptäck egen samling (bokstav/sida i URL:en)
 │   │   ├── MovieDetailPage.tsx      # "/movie/:id" – detaljvy, redigera, ta bort, matcha
 │   │   ├── AdminPage.tsx            # "/admin" – platser + tema
 │   │   └── AboutPage.tsx            # "/om" – info om appen + GitHub-länk
 │   ├── lib/
-│   │   ├── supabase.ts              # Klient, schema "pmdb"
-│   │   ├── movies.ts                # CRUD mot pmdb.movies
-│   │   ├── locations.ts             # CRUD mot pmdb.locations
+│   │   ├── supabase.ts              # Klient, schema "pmdb" (läsning)
+│   │   ├── movies.ts                # Läsning direkt mot Supabase, skrivning via /api/movies
+│   │   ├── locations.ts             # Läsning direkt mot Supabase, skrivning via /api/locations
 │   │   ├── tmdb.ts                  # Klientsidans wrapper mot /api/tmdb-*
 │   │   ├── omdb.ts                  # Klientsidans wrapper mot /api/omdb-rating
-│   │   ├── proxy.ts                 # Delad hemlighet-header till /api/*
+│   │   ├── proxy.ts                 # Delad hemlighet-header till /api/tmdb-*/omdb-rating
 │   │   └── theme-context.tsx        # Ljust/mörkt tema, localStorage-persistens
 │   ├── types/
 │   │   ├── movie.ts
 │   │   └── location.ts
 │   ├── App.tsx                      # Routes
-│   └── main.tsx
+│   └── main.tsx                     # ClerkProvider · ThemeProvider · BrowserRouter
 ├── supabase/
 │   ├── migrations/                  # 0001_init · 0002_locations · 0003_optional_tmdb
 │   ├── seed.sql                     # Testdata (16 filmer, 5 platser)
@@ -199,11 +212,38 @@ Byggs upp av tre migrationer i `supabase/migrations/`: `0001_init.sql` skapar sc
 
 ## Säkerhet
 
-- **API-nycklar aldrig i klienten** – `TMDB_API_KEY`/`OMDB_API_KEY` finns bara server-side i `api/*.ts` (Vercel Functions). Klienten anropar egna proxy-endpoints (`/api/tmdb-search`, `/api/tmdb-movie`, `/api/omdb-rating`) istället för TMDB/OMDb direkt.
-- **Delad hemlighet-header** (`PROXY_SECRET` / `VITE_PROXY_SECRET`) – enkelt skydd mot att slumpmässiga bottar/scanners hittar den publika URL:en och förbrukar TMDB/OMDb-kvoten. **Inte** riktig autentisering: hemligheten skickas från klienten och finns därför i den publika JS-bundeln (`src/lib/proxy.ts`).
-- **Row Level Security** – aktiverat på `pmdb.movies` och `pmdb.locations`, men med en tillfällig öppen policy (`using (true)`) eftersom ingen inloggning finns ännu. RLS ger alltså inget faktiskt skydd i nuläget – appen förlitar sig på att URL:en inte är känd. Kolumnen `user_id` finns förberedd på båda tabellerna för att kunna byta till `auth.uid() = user_id`-policyer den dagen inloggning införs, utan schemaändring.
+- **API-nycklar aldrig i klienten** – `TMDB_API_KEY`/`OMDB_API_KEY`/`CLERK_SECRET_KEY` finns bara server-side i `api/*.ts` (Vercel Functions). Klienten anropar egna proxy-endpoints istället för TMDB/OMDb/Clerk direkt.
+- **Delad hemlighet-header** (`PROXY_SECRET` / `VITE_PROXY_SECRET`) – enkelt skydd mot att slumpmässiga bottar/scanners hittar den publika URL:en och förbrukar TMDB/OMDb-kvoten. **Inte** riktig autentisering: hemligheten skickas från klienten och finns därför i den publika JS-bundeln (`src/lib/proxy.ts`). Gäller bara `tmdb-*`/`omdb-rating` – se [Inloggning & behörighet](#inloggning--behörighet) för hur `movies`/`locations` faktiskt skyddas.
+- **Row Level Security** – aktiverat på `pmdb.movies` och `pmdb.locations`, men fortfarande med en öppen policy (`using (true)`) på databasnivå. RLS stoppar alltså inte i sig ett anrop som går direkt mot Supabase med anon-nyckeln. Det faktiska skyddet för skrivoperationer ligger istället i API-lagret (`api/movies.ts`/`api/locations.ts`), som kräver en verifierad Clerk-session innan något skrivs – se nästa avsnitt. Kolumnen `user_id` finns fortfarande förberedd på båda tabellerna för att kunna byta till `auth.uid() = user_id`-policyer om databasen någon gång ska vara fleranvändarmedveten på riktigt.
 - **Supabase anon-nyckel** – publik med avsikt (Supabases säkerhetsmodell bygger på RLS, inte på en hemlig nyckel). Eftersom databasen delas med andra projekt ligger all PMDB-data i ett eget schema (`pmdb`), separat från andra scheman i samma databas.
 - **Secret key** (`sb_secret_...`, eller gamla `service_role`) används aldrig i projektet – den kringgår RLS helt och ska aldrig hamna i klientkod.
+
+---
+
+## Inloggning & behörighet
+
+Google-inloggning via [Clerk](https://clerk.com) krävs för att **lägga till, redigera, matcha eller ta bort filmer**, samt **lägga till/ta bort platser**. Att bläddra, sortera, söka och filtrera i samlingen är öppet för alla, utloggad som inloggad.
+
+Samma Clerk-applikation (samma Google-inloggning) återanvänds från ett annat privat projekt – inget nytt Clerk-konto behöver skapas för att klona och köra PMDB, bara egna nycklar (se [Miljövariabler](#miljövariabler)).
+
+### Klient
+
+`ClerkProvider` wrappar hela appen i `main.tsx`. UI:t använder Clerks inbyggda komponenter:
+
+- `<SignedIn>` / `<SignedOut>` – döljer/visar knappar och formulär beroende på inloggningsstatus (t.ex. "+ Lägg till film", "Redigera", "Ta bort", platshanteringen i Inställningar)
+- `<SignInButton mode="modal">` – inloggningsknapp i headern
+- `<UserButton>` – profilmeny + utloggning när inloggad
+- `useAuth().getToken()` – hämtar en kortlivad sessions-token som skickas med varje skrivanrop
+
+### Server – faktisk enforcement, inte bara dolda knappar
+
+`src/lib/movies.ts` och `src/lib/locations.ts` skriver **inte** längre direkt mot Supabase. Skrivoperationer (`addMovie`, `updateMovie`, `deleteMovie`, `addLocation`, `deleteLocation`) går via `fetch` till `/api/movies` respektive `/api/locations`, med token som `Authorization: Bearer <token>`-header. Läsning (`listMovies`, `getMovie`, `listLocations`) går fortfarande direkt mot Supabase som tidigare, eftersom bläddring inte kräver inloggning.
+
+`api/_lib/clerkAuth.ts` verifierar tokenet med `@clerk/backend`s `verifyToken()` innan `api/movies.ts`/`api/locations.ts` rör databasen. Ett anrop utan giltig token får `401` – **även om någon skulle anropa endpointen direkt och hoppa förbi UI:t helt**. Det är den här servern-sida-kontrollen, inte att knapparna råkar vara dolda, som faktiskt skyddar åtgärderna.
+
+### Känd nyans
+
+RLS på `pmdb.movies`/`pmdb.locations` är fortfarande öppen (se [Säkerhet](#säkerhet)) – skyddet sitter i API-lagret, inte i databasen. Ett anrop direkt mot Supabase med anon-nyckeln (utan att gå via `/api/movies`) skulle alltså fortfarande lyckas. Att stänga den luckan helt skulle kräva att koppla Clerk till Supabase som en tredjeparts-auth-leverantör för RLS – inte gjort här, eftersom API-lagret redan täcker appens faktiska anropsvägar.
 
 ---
 
@@ -243,6 +283,8 @@ PMDB är byggt med **WCAG 2.1 AA** som riktlinje.
 | **Touch-mål** | Primära knappar minst 44×44 px (`min-h-11`), övriga minst WCAG 2.2:s 24×24 px-minimum |
 | **Rörelsereducering** | `prefers-reduced-motion: reduce` stänger av transitions/animationer |
 
+Inloggningsflödet använder Clerks egna UI-komponenter (`SignInButton`, `UserButton`), vars tillgänglighetsimplementering Clerk själva ansvarar för.
+
 ---
 
 ## Importera befintlig samling & matcha mot TMDB
@@ -267,6 +309,7 @@ Så snart en film utan `tmdb_id` öppnas visas automatiskt en sökmodal (`MatchM
 - Ett Supabase-projekt (kan gärna dela databas med andra projekt, se [Supabase – setup](#supabase--setup))
 - Ett TMDB-konto + API-nyckel
 - En OMDb API-nyckel
+- En Clerk-applikation med Google aktiverat (se [Skaffa Clerk-nycklar](#skaffa-clerk-nycklar))
 
 ### Installation
 
@@ -312,6 +355,8 @@ npm run lint       # oxlint över hela kodbasen
 | `VITE_SUPABASE_ANON_KEY` | Klient | Nej – skyddas av RLS, inte av att nyckeln är hemlig |
 | `VITE_PROXY_SECRET` | Klient (skickas som header) | Svagt skydd, se [Säkerhet](#säkerhet) |
 | `PROXY_SECRET` | Server (`api/_lib/auth.ts`) | Svagt skydd, se [Säkerhet](#säkerhet) |
+| `VITE_CLERK_PUBLISHABLE_KEY` | Klient | Nej – avsedd att vara publik |
+| `CLERK_SECRET_KEY` | Server (`api/_lib/clerkAuth.ts`) | Ja |
 | `TMDB_API_KEY` | Server (`api/tmdb-*.ts`) | Ja |
 | `OMDB_API_KEY` | Server (`api/omdb-rating.ts`) | Ja |
 
@@ -333,9 +378,19 @@ python3 -c "import secrets; print(secrets.token_urlsafe(32))"
 2. Aktivera via länken som skickas till din mejl
 3. Klistra in → `OMDB_API_KEY`
 
+### Skaffa Clerk-nycklar
+
+1. Skapa ett konto och en applikation på [clerk.com](https://clerk.com) (eller återanvänd en befintlig applikation om du redan har en)
+2. Aktivera **Google** som inloggningsmetod under **Configure → SSO Connections**
+3. **Configure → API Keys**:
+   - **Publishable key** → `VITE_CLERK_PUBLISHABLE_KEY`
+   - **Secret key** → `CLERK_SECRET_KEY`
+
+Localhost fungerar automatiskt för en Clerk-applikation i utvecklingsläge – inga extra domän-inställningar behövs för lokal utveckling.
+
 ### I produktion (Vercel)
 
-`.env` committas inte och läses bara lokalt. Lägg in samma sex variabler under **Project Settings → Environment Variables** i Vercel-dashboarden – annars byggs appen utan dem, och sök/lägg-till-film slutar fungera i produktion (401/"Invalid API key") trots att allt ser rätt ut lokalt. En variabel som läggs till *efter* senaste deploy slår heller inte igenom förrän en ny deploy körs.
+`.env` committas inte och läses bara lokalt. Lägg in samma åtta variabler under **Project Settings → Environment Variables** i Vercel-dashboarden – annars byggs appen utan dem, och sök/lägg-till-film/inloggning slutar fungera i produktion (401/"Invalid API key") trots att allt ser rätt ut lokalt. En variabel som läggs till *efter* senaste deploy slår heller inte igenom förrän en ny deploy körs.
 
 ---
 
@@ -425,8 +480,9 @@ Ljust/mörkt läge styrs av klassen `.dark` på `<html>`, satt via `ThemeProvide
 
 ## Kända begränsningar
 
-- Ingen inloggning ännu – `user_id`-kolumnerna i `movies` och `locations` är förberedda för flera användare men oanvända; RLS-policyerna är tillfälligt öppna (`using (true)`) tills auth införs.
-- `PROXY_SECRET`-skyddet är ett enkelt bot-filter, inte riktig autentisering – hemligheten skickas från och finns i klientens JS-bundle.
+- RLS på `pmdb.movies`/`pmdb.locations` är fortfarande öppen (`using (true)`) på databasnivå – skyddet för skrivoperationer sitter i API-lagret (Clerk-verifiering), inte i Supabase. Ett anrop direkt mot Supabase med anon-nyckeln skulle fortfarande lyckas. Se [Inloggning & behörighet](#inloggning--behörighet).
+- `user_id`-kolumnerna i `movies` och `locations` är fortfarande förberedda men oanvända – appen har bara en användarroll (inloggad/utloggad), inte separata datamängder per person.
+- `PROXY_SECRET`-skyddet (TMDB/OMDb) är ett enkelt bot-filter, inte riktig autentisering – hemligheten skickas från och finns i klientens JS-bundle.
 - Importerade filmer (via CSV) saknar `tmdb_id`/`imdb_id` tills de matchas manuellt via **"Matcha mot TMDB"** på respektive detaljsida – ingen bulk-matchning finns ännu.
 - Inga automatiska tester ännu.
 
