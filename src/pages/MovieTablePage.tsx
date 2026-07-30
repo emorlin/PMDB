@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import MovieTable from '../components/MovieTable'
 import AddMovieModal from '../components/AddMovieModal'
@@ -13,6 +13,7 @@ export default function MovieTablePage() {
   const [sort, setSort] = useState<SortColumn>('title')
   const [dir, setDir] = useState<SortDirection>('asc')
   const [showAdd, setShowAdd] = useState(false)
+  const [query, setQuery] = useState('')
 
   async function load() {
     setLoading(true)
@@ -40,6 +41,12 @@ export default function MovieTablePage() {
     }
   }
 
+  const filteredMovies = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return movies
+    return movies.filter((m) => m.title.toLowerCase().includes(q))
+  }, [movies, query])
+
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
@@ -52,6 +59,25 @@ export default function MovieTablePage() {
         </button>
       </div>
 
+      <div className="mb-4">
+        <label htmlFor="movie-search" className="sr-only">
+          Sök på titel
+        </label>
+        <input
+          id="movie-search"
+          type="search"
+          placeholder="Sök på titel..."
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          className="w-full rounded-md bg-surface-2 border border-border px-3 py-2 text-sm focus:border-accent"
+        />
+        {query.trim() && (
+          <div aria-live="polite" className="text-xs text-text-muted mt-1">
+            {filteredMovies.length} {filteredMovies.length === 1 ? 'film' : 'filmer'} matchar
+          </div>
+        )}
+      </div>
+
       {error && (
         <div role="alert" className="text-sm text-danger mb-3">
           {error}
@@ -62,7 +88,15 @@ export default function MovieTablePage() {
           Laddar...
         </div>
       ) : (
-        <MovieTable movies={movies} sort={sort} dir={dir} onSort={handleSort} />
+        <MovieTable
+          movies={filteredMovies}
+          sort={sort}
+          dir={dir}
+          onSort={handleSort}
+          emptyMessage={
+            query.trim() ? 'Inga filmer matchar sökningen.' : 'Inga filmer ännu. Lägg till din första film.'
+          }
+        />
       )}
 
       {showAdd && (

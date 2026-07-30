@@ -6,6 +6,7 @@ interface Props {
   sort: SortColumn
   dir: SortDirection
   onSort: (col: SortColumn) => void
+  emptyMessage?: string
 }
 
 const columns: { key: SortColumn; label: string }[] = [
@@ -29,7 +30,13 @@ function ariaSortFor(col: SortColumn, sort: SortColumn, dir: SortDirection): 'as
   return dir === 'asc' ? 'ascending' : 'descending'
 }
 
-export default function MovieTable({ movies, sort, dir, onSort }: Props) {
+export default function MovieTable({
+  movies,
+  sort,
+  dir,
+  onSort,
+  emptyMessage = 'Inga filmer ännu. Lägg till din första film.',
+}: Props) {
   const navigate = useNavigate()
 
   return (
@@ -85,7 +92,7 @@ export default function MovieTable({ movies, sort, dir, onSort }: Props) {
             {movies.length === 0 && (
               <tr>
                 <td colSpan={columns.length} className="px-3 py-8 text-center text-text-muted">
-                  Inga filmer ännu. Lägg till din första film.
+                  {emptyMessage}
                 </td>
               </tr>
             )}
@@ -122,9 +129,7 @@ export default function MovieTable({ movies, sort, dir, onSort }: Props) {
         </div>
 
         {movies.length === 0 ? (
-          <div className="text-center text-text-muted text-sm py-8">
-            Inga filmer ännu. Lägg till din första film.
-          </div>
+          <div className="text-center text-text-muted text-sm py-8">{emptyMessage}</div>
         ) : (
           <ul className="flex flex-col gap-2">
             {movies.map((m) => (
