@@ -16,7 +16,7 @@ export default function AppLayout() {
       </a>
       <header className="border-b border-border">
         <div className="mx-auto max-w-6xl flex flex-wrap items-center justify-between gap-2 px-4 sm:px-6 py-2 sm:py-3">
-          <span className="font-medium">Min filmsamling</span>
+          <span className="font-medium">Mathias filmsamling</span>
           <nav aria-label="Huvudmeny" className="flex flex-wrap gap-1">
             <NavLink to="/" end className={linkClass}>
               Tabell

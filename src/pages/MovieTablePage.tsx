@@ -14,6 +14,7 @@ export default function MovieTablePage() {
   const [dir, setDir] = useState<SortDirection>('asc')
   const [showAdd, setShowAdd] = useState(false)
   const [query, setQuery] = useState('')
+  const [onlyUnseen, setOnlyUnseen] = useState(false)
 
   async function load() {
     setLoading(true)
@@ -41,16 +42,23 @@ export default function MovieTablePage() {
     }
   }
 
+  const unseenCount = useMemo(() => movies.filter((m) => m.my_rating === null).length, [movies])
+
   const filteredMovies = useMemo(() => {
     const q = query.trim().toLowerCase()
-    if (!q) return movies
-    return movies.filter((m) => m.title.toLowerCase().includes(q))
-  }, [movies, query])
+    return movies.filter((m) => {
+      if (onlyUnseen && m.my_rating !== null) return false
+      if (q && !m.title.toLowerCase().includes(q)) return false
+      return true
+    })
+  }, [movies, query, onlyUnseen])
+
+  const filterActive = query.trim() !== '' || onlyUnseen
 
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-        <h1 className="text-lg font-medium">Min filmsamling</h1>
+        <h1 className="text-lg font-medium">Mathias filmsamling</h1>
         <button
           onClick={() => setShowAdd(true)}
           className="rounded-md bg-accent text-black px-3 py-2 min-h-11 text-sm font-medium"
@@ -59,24 +67,45 @@ export default function MovieTablePage() {
         </button>
       </div>
 
-      <div className="mb-4">
-        <label htmlFor="movie-search" className="sr-only">
-          Sök på titel
-        </label>
-        <input
-          id="movie-search"
-          type="search"
-          placeholder="Sök på titel..."
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          className="w-full rounded-md bg-surface-2 border border-border px-3 py-2 text-sm focus:border-accent"
-        />
-        {query.trim() && (
-          <div aria-live="polite" className="text-xs text-text-muted mt-1">
-            {filteredMovies.length} {filteredMovies.length === 1 ? 'film' : 'filmer'} matchar
-          </div>
-        )}
+      <div className="flex flex-wrap gap-3 mb-4">
+        <div className="rounded-md bg-surface-2 border border-border px-4 py-2">
+          <div className="text-xs text-text-muted">Filmer</div>
+          <div className="text-lg font-medium">{movies.length}</div>
+        </div>
+        <div className="rounded-md bg-surface-2 border border-border px-4 py-2">
+          <div className="text-xs text-text-muted">Osedda</div>
+          <div className="text-lg font-medium">{unseenCount}</div>
+        </div>
       </div>
+
+      <div className="flex flex-wrap items-center gap-3 mb-1">
+        <div className="flex-1 min-w-40">
+          <label htmlFor="movie-search" className="sr-only">
+            Sök på titel
+          </label>
+          <input
+            id="movie-search"
+            type="search"
+            placeholder="Sök på titel..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="w-full rounded-md bg-surface-2 border border-border px-3 py-2 text-sm focus:border-accent"
+          />
+        </div>
+        <label className="flex items-center gap-2 text-sm min-h-11 whitespace-nowrap">
+          <input
+            type="checkbox"
+            checked={onlyUnseen}
+            onChange={(e) => setOnlyUnseen(e.target.checked)}
+          />
+          Endast osedda
+        </label>
+      </div>
+      {filterActive && (
+        <div aria-live="polite" className="text-xs text-text-muted mb-3">
+          Visar {filteredMovies.length} av {movies.length} filmer
+        </div>
+      )}
 
       {error && (
         <div role="alert" className="text-sm text-danger mb-3">
@@ -94,7 +123,7 @@ export default function MovieTablePage() {
           dir={dir}
           onSort={handleSort}
           emptyMessage={
-            query.trim() ? 'Inga filmer matchar sökningen.' : 'Inga filmer ännu. Lägg till din första film.'
+            filterActive ? 'Inga filmer matchar filtreringen.' : 'Inga filmer ännu. Lägg till din första film.'
           }
         />
       )}
