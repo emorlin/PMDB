@@ -80,11 +80,11 @@ export default function MovieTablePage() {
 
       <div className="flex flex-wrap items-center gap-3 mb-1">
         <div className="flex-1 min-w-40">
-          <label htmlFor="movie-search" className="sr-only">
+          <label htmlFor="collection-search" className="sr-only">
             Sök på titel
           </label>
           <input
-            id="movie-search"
+            id="collection-search"
             type="search"
             placeholder="Sök på titel..."
             value={query}
@@ -129,7 +129,13 @@ export default function MovieTablePage() {
       )}
 
       {showAdd && (
-        <AddMovieModal onClose={() => setShowAdd(false)} onAdded={(m) => navigate(`/movie/${m.id}`)} />
+        <AddMovieModal
+          onClose={() => setShowAdd(false)}
+          onAdded={(m) => {
+            setMovies((prev) => [...prev, m])
+            navigate(`/movie/${m.id}`)
+          }}
+        />
       )}
     </div>
   )

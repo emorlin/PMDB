@@ -127,7 +127,13 @@ export default function DiscoverPage() {
       )}
 
       {showAdd && (
-        <AddMovieModal onClose={() => setShowAdd(false)} onAdded={(m) => navigate(`/movie/${m.id}`)} />
+        <AddMovieModal
+          onClose={() => setShowAdd(false)}
+          onAdded={(m) => {
+            setAll((prev) => [...prev, m])
+            navigate(`/movie/${m.id}`)
+          }}
+        />
       )}
     </div>
   )
