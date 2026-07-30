@@ -26,7 +26,7 @@ const FEATURES = [
 export default function AboutPage() {
   return (
     <div className="max-w-lg">
-      <h1 className="text-lg font-medium mb-2">Om PMDB</h1>
+      <h1 className="text-xl font-medium mb-2">Om PMDB</h1>
       <p className="text-sm text-text-muted leading-relaxed mb-6">
         PMDB är en personlig katalog över min fysiska filmsamling – DVD och Blu-ray. Appen håller
         koll på var varje film står, vad jag själv tyckte om den och vad IMDb tycker. Poster,

@@ -54,7 +54,7 @@ export default function AdminPage() {
 
   return (
     <div className="max-w-md">
-      <h1 className="text-lg font-medium mb-6">Inställningar</h1>
+      <h1 className="text-xl font-medium mb-6">Inställningar</h1>
 
       <section className="mb-8">
         <h2 className="text-sm font-medium text-text-muted mb-2">Tema</h2>

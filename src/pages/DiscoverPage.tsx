@@ -66,6 +66,8 @@ export default function DiscoverPage() {
 
   return (
     <div>
+      <h1 className="text-xl font-medium mb-4">Upptäck Filmer</h1>
+
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <label className="flex items-center gap-2 text-sm min-h-11">
           <input

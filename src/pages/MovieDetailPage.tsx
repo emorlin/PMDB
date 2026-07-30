@@ -127,7 +127,7 @@ export default function MovieDetailPage() {
           )}
         </div>
         <div className="flex-1 min-w-0">
-          <h1 className="text-xl font-medium">{movie.title}</h1>
+          <h1 className="text-2xl font-medium">{movie.title}</h1>
           <div className="text-sm text-text-muted mt-1 mb-3">
             {movie.year ?? '–'} · {formatRuntime(movie.runtime_minutes)}
             {tmdb && tmdb.genres.length > 0 && ' · ' + tmdb.genres.map((g) => g.name).join(', ')}

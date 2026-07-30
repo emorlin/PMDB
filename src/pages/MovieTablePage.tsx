@@ -58,7 +58,7 @@ export default function MovieTablePage() {
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-        <h1 className="text-lg font-medium">Mathias filmsamling</h1>
+        <h1 className="text-xl font-medium">Mathias Filmsamling</h1>
         <button
           onClick={() => setShowAdd(true)}
           className="rounded-md bg-accent text-black px-3 py-2 min-h-11 text-sm font-medium"

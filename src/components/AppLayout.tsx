@@ -22,7 +22,7 @@ export default function AppLayout() {
           <Link to="/" className="flex items-center rounded-md focus-visible:outline-offset-4">
             <img
               src={theme === 'dark' ? '/logo-dark.png' : '/logo.png'}
-              alt="Mathias filmsamling"
+              alt="Mathias Filmsamling"
               className="h-9 w-auto"
             />
           </Link>
