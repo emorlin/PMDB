@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { useAuth, SignedIn } from '@clerk/clerk-react'
 import { getMovie, deleteMovie, updateMovie } from '../lib/movies'
 import { getMovieDetails, posterUrl, type TmdbMovieDetails } from '../lib/tmdb'
 import { listLocations } from '../lib/locations'
@@ -17,6 +18,7 @@ function formatRuntime(min: number | null) {
 export default function MovieDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { getToken, isSignedIn } = useAuth()
   const [movie, setMovie] = useState<Movie | null>(null)
   const [tmdb, setTmdb] = useState<TmdbMovieDetails | null>(null)
   const [loading, setLoading] = useState(true)
@@ -42,10 +44,11 @@ export default function MovieDetailPage() {
     getMovie(id)
       .then((m) => {
         setMovie(m)
-        setShowMatchModal(m.tmdb_id == null)
+        setShowMatchModal(m.tmdb_id == null && isSignedIn === true)
       })
       .catch((e) => setError((e as Error).message))
       .finally(() => setLoading(false))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
   useEffect(() => {
@@ -67,7 +70,9 @@ export default function MovieDetailPage() {
   async function handleDelete() {
     if (!movie) return
     if (!confirm(`Ta bort "${movie.title}" från samlingen?`)) return
-    await deleteMovie(movie.id)
+    const token = await getToken()
+    if (!token) return
+    await deleteMovie(movie.id, token)
     navigate('/')
   }
 
@@ -82,10 +87,16 @@ export default function MovieDetailPage() {
     if (!movie) return
     setSaving(true)
     try {
-      const updated = await updateMovie(movie.id, {
-        my_rating: editRating ? parseInt(editRating, 10) : null,
-        location_id: editLocationId || null,
-      })
+      const token = await getToken()
+      if (!token) throw new Error('Du måste vara inloggad för att redigera filmer.')
+      const updated = await updateMovie(
+        movie.id,
+        {
+          my_rating: editRating ? parseInt(editRating, 10) : null,
+          location_id: editLocationId || null,
+        },
+        token,
+      )
       setMovie(updated)
       setEditing(false)
     } catch (e) {
@@ -135,12 +146,14 @@ export default function MovieDetailPage() {
           {movie.tmdb_id == null && (
             <div className="flex items-center gap-2 flex-wrap text-xs text-text-muted bg-surface-2 border border-border rounded-md px-2 py-1.5 mb-3">
               <span>Inte matchad mot TMDB ännu – handling, skådespelare och genre saknas.</span>
-              <button
-                onClick={() => setShowMatchModal(true)}
-                className="rounded-md border border-border px-2 py-1.5 min-h-8 text-xs text-text hover:bg-surface"
-              >
-                Matcha mot TMDB
-              </button>
+              <SignedIn>
+                <button
+                  onClick={() => setShowMatchModal(true)}
+                  className="rounded-md border border-border px-2 py-1.5 min-h-8 text-xs text-text hover:bg-surface"
+                >
+                  Matcha mot TMDB
+                </button>
+              </SignedIn>
             </div>
           )}
 
@@ -235,20 +248,22 @@ export default function MovieDetailPage() {
       )}
 
       {!editing && (
-        <div className="mt-5 flex gap-2">
-          <button
-            onClick={startEdit}
-            className="rounded-md border border-border px-3 py-2 min-h-11 text-sm hover:bg-surface-2"
-          >
-            Redigera
-          </button>
-          <button
-            onClick={handleDelete}
-            className="rounded-md border border-border px-3 py-2 min-h-11 text-sm text-danger hover:bg-surface-2"
-          >
-            Ta bort
-          </button>
-        </div>
+        <SignedIn>
+          <div className="mt-5 flex gap-2">
+            <button
+              onClick={startEdit}
+              className="rounded-md border border-border px-3 py-2 min-h-11 text-sm hover:bg-surface-2"
+            >
+              Redigera
+            </button>
+            <button
+              onClick={handleDelete}
+              className="rounded-md border border-border px-3 py-2 min-h-11 text-sm text-danger hover:bg-surface-2"
+            >
+              Ta bort
+            </button>
+          </div>
+        </SignedIn>
       )}
 
       {showMatchModal && (

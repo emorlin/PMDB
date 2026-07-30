@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useAuth } from '@clerk/clerk-react'
 import { searchMovies, getMovieDetails, posterUrl, type TmdbSearchResult } from '../lib/tmdb'
 import { getImdbRating } from '../lib/omdb'
 import { addMovie } from '../lib/movies'
@@ -25,6 +26,7 @@ const FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
 export default function AddMovieModal({ onClose, onAdded }: Props) {
+  const { getToken } = useAuth()
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<TmdbSearchResult[]>([])
   const [loadingResults, setLoadingResults] = useState(false)
@@ -132,16 +134,21 @@ export default function AddMovieModal({ onClose, onAdded }: Props) {
     setSaving(true)
     setError(null)
     try {
-      const movie = await addMovie({
-        tmdb_id: selected.tmdb_id,
-        imdb_id: selected.imdb_id,
-        title: selected.title,
-        year: selected.year,
-        runtime_minutes: selected.runtime_minutes,
-        imdb_rating: selected.imdb_rating,
-        my_rating: myRating ? parseInt(myRating, 10) : null,
-        location_id: locationId || null,
-      })
+      const token = await getToken()
+      if (!token) throw new Error('Du måste vara inloggad för att lägga till filmer.')
+      const movie = await addMovie(
+        {
+          tmdb_id: selected.tmdb_id,
+          imdb_id: selected.imdb_id,
+          title: selected.title,
+          year: selected.year,
+          runtime_minutes: selected.runtime_minutes,
+          imdb_rating: selected.imdb_rating,
+          my_rating: myRating ? parseInt(myRating, 10) : null,
+          location_id: locationId || null,
+        },
+        token,
+      )
       onAdded(movie)
       onClose()
     } catch (e) {

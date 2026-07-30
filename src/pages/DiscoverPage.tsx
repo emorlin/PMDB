@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { SignedIn } from '@clerk/clerk-react'
 import AlphabetFilter from '../components/AlphabetFilter'
 import PosterGrid from '../components/PosterGrid'
 import AddMovieModal from '../components/AddMovieModal'
@@ -84,12 +85,14 @@ export default function DiscoverPage() {
           >
             Slumpa filmer
           </button>
-          <button
-            onClick={() => setShowAdd(true)}
-            className="rounded-md bg-accent text-black px-3 py-2 min-h-11 text-sm font-medium"
-          >
-            + Lägg till film
-          </button>
+          <SignedIn>
+            <button
+              onClick={() => setShowAdd(true)}
+              className="rounded-md bg-accent text-black px-3 py-2 min-h-11 text-sm font-medium"
+            >
+              + Lägg till film
+            </button>
+          </SignedIn>
         </div>
       </div>
 

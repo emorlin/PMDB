@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useAuth } from '@clerk/clerk-react'
 import { searchMovies, getMovieDetails, posterUrl, type TmdbSearchResult } from '../lib/tmdb'
 import { getImdbRating } from '../lib/omdb'
 import { updateMovie } from '../lib/movies'
@@ -23,6 +24,7 @@ const FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
 export default function MatchMovieModal({ movie, onClose, onMatched }: Props) {
+  const { getToken } = useAuth()
   const [query, setQuery] = useState(movie.title)
   const [results, setResults] = useState<TmdbSearchResult[]>([])
   const [loadingResults, setLoadingResults] = useState(false)
@@ -121,11 +123,17 @@ export default function MatchMovieModal({ movie, onClose, onMatched }: Props) {
     setSaving(true)
     setError(null)
     try {
-      const updated = await updateMovie(movie.id, {
-        tmdb_id: selected.tmdb_id,
-        imdb_id: selected.imdb_id,
-        imdb_rating: selected.imdb_rating,
-      })
+      const token = await getToken()
+      if (!token) throw new Error('Du måste vara inloggad för att matcha filmer.')
+      const updated = await updateMovie(
+        movie.id,
+        {
+          tmdb_id: selected.tmdb_id,
+          imdb_id: selected.imdb_id,
+          imdb_rating: selected.imdb_rating,
+        },
+        token,
+      )
       onMatched(updated)
       onClose()
     } catch (e) {

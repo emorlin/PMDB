@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
+import { useAuth, SignedIn, SignedOut } from '@clerk/clerk-react'
 import { useTheme } from '../lib/theme-context'
 import { listLocations, addLocation, deleteLocation } from '../lib/locations'
 import type { Location } from '../types/location'
 
 export default function AdminPage() {
   const { theme, setTheme } = useTheme()
+  const { getToken } = useAuth()
   const [locations, setLocations] = useState<Location[]>([])
   const [newName, setNewName] = useState('')
   const [loading, setLoading] = useState(true)
@@ -32,7 +34,9 @@ export default function AdminPage() {
     setSaving(true)
     setError(null)
     try {
-      const loc = await addLocation(newName.trim())
+      const token = await getToken()
+      if (!token) throw new Error('Du måste vara inloggad för att lägga till platser.')
+      const loc = await addLocation(newName.trim(), token)
       setLocations((prev) => [...prev, loc].sort((a, b) => a.name.localeCompare(b.name, 'sv')))
       setNewName('')
     } catch (e) {
@@ -45,7 +49,9 @@ export default function AdminPage() {
   async function handleDelete(id: string) {
     setError(null)
     try {
-      await deleteLocation(id)
+      const token = await getToken()
+      if (!token) throw new Error('Du måste vara inloggad för att ta bort platser.')
+      await deleteLocation(id, token)
       setLocations((prev) => prev.filter((l) => l.id !== id))
     } catch (e) {
       setError((e as Error).message)
@@ -101,13 +107,15 @@ export default function AdminPage() {
                 className="flex items-center justify-between gap-2 px-3 py-2 text-sm border-b border-border last:border-b-0"
               >
                 {l.name}
-                <button
-                  onClick={() => handleDelete(l.id)}
-                  aria-label={`Ta bort ${l.name}`}
-                  className="text-text-muted hover:text-danger text-xs px-2 py-1.5 min-h-11 -my-1"
-                >
-                  Ta bort
-                </button>
+                <SignedIn>
+                  <button
+                    onClick={() => handleDelete(l.id)}
+                    aria-label={`Ta bort ${l.name}`}
+                    className="text-text-muted hover:text-danger text-xs px-2 py-1.5 min-h-11 -my-1"
+                  >
+                    Ta bort
+                  </button>
+                </SignedIn>
               </li>
             ))}
             {locations.length === 0 && (
@@ -116,27 +124,32 @@ export default function AdminPage() {
           </ul>
         )}
 
-        <div className="flex gap-2">
-          <label htmlFor="new-location-name" className="sr-only">
-            Ny plats
-          </label>
-          <input
-            id="new-location-name"
-            type="text"
-            placeholder="Ny plats (t.ex. Hylla 4)"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
-            className="flex-1 rounded-md bg-surface-2 border border-border px-2 py-2 text-sm focus:border-accent"
-          />
-          <button
-            onClick={handleAdd}
-            disabled={saving}
-            className="rounded-md bg-accent text-black px-3 py-2 min-h-11 text-sm font-medium disabled:opacity-50"
-          >
-            Lägg till
-          </button>
-        </div>
+        <SignedIn>
+          <div className="flex gap-2">
+            <label htmlFor="new-location-name" className="sr-only">
+              Ny plats
+            </label>
+            <input
+              id="new-location-name"
+              type="text"
+              placeholder="Ny plats (t.ex. Hylla 4)"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+              className="flex-1 rounded-md bg-surface-2 border border-border px-2 py-2 text-sm focus:border-accent"
+            />
+            <button
+              onClick={handleAdd}
+              disabled={saving}
+              className="rounded-md bg-accent text-black px-3 py-2 min-h-11 text-sm font-medium disabled:opacity-50"
+            >
+              Lägg till
+            </button>
+          </div>
+        </SignedIn>
+        <SignedOut>
+          <div className="text-xs text-text-muted">Logga in för att hantera platser.</div>
+        </SignedOut>
       </section>
     </div>
   )

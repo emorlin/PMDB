@@ -56,28 +56,38 @@ export async function getMovie(id: string): Promise<Movie> {
   return data as unknown as Movie
 }
 
-export async function addMovie(movie: MovieInsert): Promise<Movie> {
-  const { data, error } = await supabase
-    .from('movies')
-    .insert(movie)
-    .select(SELECT_WITH_LOCATION)
-    .single()
-  if (error) throw error
-  return data as unknown as Movie
+// Skrivoperationer går via /api/movies (inte direkt mot Supabase från klienten)
+// eftersom de kräver inloggning – token kommer från Clerks useAuth().getToken().
+
+export async function addMovie(movie: MovieInsert, token: string): Promise<Movie> {
+  const res = await fetch('/api/movies', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify(movie),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error ?? 'Kunde inte lägga till filmen')
+  return data as Movie
 }
 
-export async function updateMovie(id: string, patch: Partial<MovieInsert>): Promise<Movie> {
-  const { data, error } = await supabase
-    .from('movies')
-    .update(patch)
-    .eq('id', id)
-    .select(SELECT_WITH_LOCATION)
-    .single()
-  if (error) throw error
-  return data as unknown as Movie
+export async function updateMovie(id: string, patch: Partial<MovieInsert>, token: string): Promise<Movie> {
+  const res = await fetch(`/api/movies?id=${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify(patch),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error ?? 'Kunde inte uppdatera filmen')
+  return data as Movie
 }
 
-export async function deleteMovie(id: string): Promise<void> {
-  const { error } = await supabase.from('movies').delete().eq('id', id)
-  if (error) throw error
+export async function deleteMovie(id: string, token: string): Promise<void> {
+  const res = await fetch(`/api/movies?id=${id}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(data.error ?? 'Kunde inte ta bort filmen')
+  }
 }

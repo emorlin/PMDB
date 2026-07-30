@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { SignedIn } from '@clerk/clerk-react'
 import MovieTable from '../components/MovieTable'
 import AddMovieModal from '../components/AddMovieModal'
 import { listMovies } from '../lib/movies'
@@ -59,12 +60,14 @@ export default function MovieTablePage() {
     <div>
       <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
         <h1 className="text-xl font-medium">Mathias Filmsamling</h1>
-        <button
-          onClick={() => setShowAdd(true)}
-          className="rounded-md bg-accent text-black px-3 py-2 min-h-11 text-sm font-medium"
-        >
-          + Lägg till film
-        </button>
+        <SignedIn>
+          <button
+            onClick={() => setShowAdd(true)}
+            className="rounded-md bg-accent text-black px-3 py-2 min-h-11 text-sm font-medium"
+          >
+            + Lägg till film
+          </button>
+        </SignedIn>
       </div>
 
       <div className="flex flex-wrap gap-3 mb-4">

@@ -1,4 +1,5 @@
 import { NavLink, Link, Outlet } from 'react-router-dom'
+import { SignedIn, SignedOut, SignInButton, UserButton } from '@clerk/clerk-react'
 import { useTheme } from '../lib/theme-context'
 
 const linkClass = ({ isActive }: { isActive: boolean }) =>
@@ -26,20 +27,32 @@ export default function AppLayout() {
               className="h-9 w-auto"
             />
           </Link>
-          <nav aria-label="Huvudmeny" className="flex flex-wrap gap-1">
-            <NavLink to="/" end className={linkClass}>
-              Tabell
-            </NavLink>
-            <NavLink to="/discover" className={linkClass}>
-              Upptäck
-            </NavLink>
-            <NavLink to="/admin" className={linkClass}>
-              Inställningar
-            </NavLink>
-            <NavLink to="/om" className={linkClass}>
-              Om
-            </NavLink>
-          </nav>
+          <div className="flex flex-wrap items-center gap-2">
+            <nav aria-label="Huvudmeny" className="flex flex-wrap gap-1">
+              <NavLink to="/" end className={linkClass}>
+                Tabell
+              </NavLink>
+              <NavLink to="/discover" className={linkClass}>
+                Upptäck
+              </NavLink>
+              <NavLink to="/admin" className={linkClass}>
+                Inställningar
+              </NavLink>
+              <NavLink to="/om" className={linkClass}>
+                Om
+              </NavLink>
+            </nav>
+            <SignedIn>
+              <UserButton />
+            </SignedIn>
+            <SignedOut>
+              <SignInButton mode="modal">
+                <button className="rounded-md border border-border px-3 py-2 min-h-11 text-sm hover:bg-surface-2">
+                  Logga in
+                </button>
+              </SignInButton>
+            </SignedOut>
+          </div>
         </div>
       </header>
       <main id="main-content" tabIndex={-1} className="mx-auto max-w-6xl px-4 sm:px-6 py-6">
