@@ -22,6 +22,17 @@ export async function addLocation(name: string, token: string): Promise<Location
   return data as Location
 }
 
+export async function updateLocation(id: string, name: string, token: string): Promise<Location> {
+  const res = await fetch(`/api/locations?id=${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ name }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error ?? 'Kunde inte byta namn på platsen')
+  return data as Location
+}
+
 export async function deleteLocation(id: string, token: string): Promise<void> {
   const res = await fetch(`/api/locations?id=${id}`, {
     method: 'DELETE',

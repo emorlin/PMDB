@@ -14,6 +14,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json(data)
   }
 
+  if (req.method === 'PATCH') {
+    const id = typeof req.query.id === 'string' ? req.query.id : ''
+    if (!id) return res.status(400).json({ error: 'Missing id' })
+    const { name } = parseBody(req)
+    const { data, error } = await supabase
+      .from('locations')
+      .update({ name })
+      .eq('id', id)
+      .select()
+      .single()
+    if (error) {
+      if (error.code === '23505') {
+        return res.status(409).json({ error: 'En plats med det namnet finns redan.' })
+      }
+      return res.status(400).json({ error: error.message })
+    }
+    return res.status(200).json(data)
+  }
+
   if (req.method === 'DELETE') {
     const id = typeof req.query.id === 'string' ? req.query.id : ''
     if (!id) return res.status(400).json({ error: 'Missing id' })

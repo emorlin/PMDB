@@ -1,17 +1,20 @@
 import { useEffect, useState } from 'react'
-import { useAuth, SignedIn, SignedOut } from '@clerk/clerk-react'
+import { useAuth, SignedIn } from '@clerk/clerk-react'
 import { useTheme } from '../lib/theme-context'
-import { listLocations, addLocation, deleteLocation } from '../lib/locations'
+import { listLocations, addLocation, updateLocation, deleteLocation } from '../lib/locations'
 import type { Location } from '../types/location'
 
 export default function AdminPage() {
   const { theme, setTheme } = useTheme()
-  const { getToken } = useAuth()
+  const { getToken, isSignedIn } = useAuth()
   const [locations, setLocations] = useState<Location[]>([])
   const [newName, setNewName] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editName, setEditName] = useState('')
+  const [renaming, setRenaming] = useState(false)
 
   async function load() {
     setLoading(true)
@@ -26,8 +29,14 @@ export default function AdminPage() {
   }
 
   useEffect(() => {
-    load()
-  }, [])
+    // Platslistan visas bara inloggad – hämta den bara då istället för att
+    // slösa ett anrop på besökare som ändå aldrig ser den.
+    if (isSignedIn) {
+      load()
+    } else if (isSignedIn === false) {
+      setLoading(false)
+    }
+  }, [isSignedIn])
 
   async function handleAdd() {
     if (!newName.trim()) return
@@ -43,6 +52,43 @@ export default function AdminPage() {
       setError((e as Error).message)
     } finally {
       setSaving(false)
+    }
+  }
+
+  function startEditLocation(loc: Location) {
+    setError(null)
+    setEditingId(loc.id)
+    setEditName(loc.name)
+  }
+
+  function cancelEditLocation() {
+    setEditingId(null)
+    setEditName('')
+  }
+
+  async function handleRename() {
+    if (!editingId) return
+    const trimmed = editName.trim()
+    if (!trimmed) return
+    const current = locations.find((l) => l.id === editingId)
+    if (current && current.name === trimmed) {
+      cancelEditLocation()
+      return
+    }
+    setRenaming(true)
+    setError(null)
+    try {
+      const token = await getToken()
+      if (!token) throw new Error('Du måste vara inloggad för att byta namn på platser.')
+      const updated = await updateLocation(editingId, trimmed, token)
+      setLocations((prev) =>
+        prev.map((l) => (l.id === updated.id ? updated : l)).sort((a, b) => a.name.localeCompare(b.name, 'sv')),
+      )
+      cancelEditLocation()
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setRenaming(false)
     }
   }
 
@@ -86,45 +132,90 @@ export default function AdminPage() {
         </div>
       </section>
 
-      <section>
-        <h2 className="text-sm font-medium text-text-muted mb-2">Platser (placering)</h2>
+      <SignedIn>
+        <section>
+          <h2 className="text-sm font-medium text-text-muted mb-2">Platser (placering)</h2>
 
-        {error && (
-          <div role="alert" className="text-xs text-danger mb-2">
-            {error}
-          </div>
-        )}
+          {error && (
+            <div role="alert" className="text-xs text-danger mb-2">
+              {error}
+            </div>
+          )}
 
-        {loading ? (
-          <div role="status" className="text-text-muted text-sm mb-3">
-            Laddar...
-          </div>
-        ) : (
-          <ul className="border border-border rounded-md overflow-hidden mb-3">
-            {locations.map((l) => (
-              <li
-                key={l.id}
-                className="flex items-center justify-between gap-2 px-3 py-2 text-sm border-b border-border last:border-b-0"
-              >
-                {l.name}
-                <SignedIn>
-                  <button
-                    onClick={() => handleDelete(l.id)}
-                    aria-label={`Ta bort ${l.name}`}
-                    className="text-text-muted hover:text-danger text-xs px-2 py-1.5 min-h-11 -my-1"
+          {loading ? (
+            <div role="status" className="text-text-muted text-sm mb-3">
+              Laddar...
+            </div>
+          ) : (
+            <ul className="border border-border rounded-md overflow-hidden mb-3">
+              {locations.map((l) =>
+                editingId === l.id ? (
+                  <li key={l.id} className="px-3 py-2 border-b border-border last:border-b-0">
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault()
+                        handleRename()
+                      }}
+                      className="flex items-center gap-2"
+                    >
+                      <label htmlFor={`rename-${l.id}`} className="sr-only">
+                        Nytt namn för {l.name}
+                      </label>
+                      <input
+                        id={`rename-${l.id}`}
+                        type="text"
+                        autoFocus
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        className="flex-1 rounded-md bg-surface-2 border border-border px-2 py-1.5 text-sm focus:border-accent"
+                      />
+                      <button
+                        type="submit"
+                        disabled={renaming}
+                        className="text-xs text-accent-text px-2 py-1.5 min-h-11 whitespace-nowrap disabled:opacity-50"
+                      >
+                        {renaming ? 'Sparar...' : 'Spara'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={cancelEditLocation}
+                        className="text-xs text-text-muted px-2 py-1.5 min-h-11 whitespace-nowrap"
+                      >
+                        Avbryt
+                      </button>
+                    </form>
+                  </li>
+                ) : (
+                  <li
+                    key={l.id}
+                    className="flex items-center justify-between gap-2 px-3 py-2 text-sm border-b border-border last:border-b-0"
                   >
-                    Ta bort
-                  </button>
-                </SignedIn>
-              </li>
-            ))}
-            {locations.length === 0 && (
-              <li className="px-3 py-3 text-sm text-text-muted">Inga platser ännu.</li>
-            )}
-          </ul>
-        )}
+                    {l.name}
+                    <div className="flex items-center gap-1 -my-1">
+                      <button
+                        onClick={() => startEditLocation(l)}
+                        aria-label={`Ändra namn på ${l.name}`}
+                        className="text-text-muted hover:text-text text-xs px-2 py-1.5 min-h-11"
+                      >
+                        Ändra
+                      </button>
+                      <button
+                        onClick={() => handleDelete(l.id)}
+                        aria-label={`Ta bort ${l.name}`}
+                        className="text-text-muted hover:text-danger text-xs px-2 py-1.5 min-h-11"
+                      >
+                        Ta bort
+                      </button>
+                    </div>
+                  </li>
+                ),
+              )}
+              {locations.length === 0 && (
+                <li className="px-3 py-3 text-sm text-text-muted">Inga platser ännu.</li>
+              )}
+            </ul>
+          )}
 
-        <SignedIn>
           <div className="flex gap-2">
             <label htmlFor="new-location-name" className="sr-only">
               Ny plats
@@ -146,11 +237,8 @@ export default function AdminPage() {
               Lägg till
             </button>
           </div>
-        </SignedIn>
-        <SignedOut>
-          <div className="text-xs text-text-muted">Logga in för att hantera platser.</div>
-        </SignedOut>
-      </section>
+        </section>
+      </SignedIn>
     </div>
   )
 }
