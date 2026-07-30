@@ -51,7 +51,7 @@ Byggd som ett litet, fokuserat projekt: en användare, en samling, inget cachnin
 | **Lägg till film** | Sökmodal mot TMDB, autofyller år/speltid/IMDb-rating; plats och egen rating (1–10) fylls i manuellt. Man hamnar direkt på filmens detaljsida efter tillägg. Kräver inloggning |
 | **Matcha mot TMDB i efterhand** | Filmer utan `tmdb_id` (t.ex. CSV-importerade) öppnar automatiskt en sökmodal på detaljsidan så de kan kopplas till TMDB/IMDb senare – utan att röra egen rating eller plats. Kräver inloggning |
 | **Upptäck-vy** | Rutnät av den egna samlingen (inte nya filmer att köpa): bokstavsfilter (horisontell A–Ö-rad på desktop, dropdown på mobil), "endast osedda"-filter, slumpknapp, klassisk sidpaginering (48/sida). Bokstav och sidnummer ligger i URL:en (`?letter=B&page=2`) – delbart och webbläsarhistorik fungerar |
-| **Inställningar** | Hantera platser – lägg till/ta bort (blockeras om platsen används av en film, kräver inloggning) – samt ljust/mörkt tema (sparas i `localStorage`) |
+| **Inställningar** | Ljust/mörkt tema (sparas i `localStorage`, synligt för alla). Platshanteringen – lägg till, byta namn, ta bort (blockeras om platsen används av en film) – är helt dold tills man loggar in, inte bara knapparna |
 | **Om** | Kort, användarvänlig info om appen och dess funktioner, med länk till källkoden på GitHub |
 | **Inloggning** | Google-inloggning (via Clerk) krävs för att lägga till, redigera, matcha eller ta bort filmer, samt hantera platser. Bläddra, söka och filtrera är öppet för alla – se [eget avsnitt](#inloggning--behörighet) |
 | **Tillgänglighet** | WCAG 2.1 AA: tangentbordsnavigerbar sorterbar tabell, dialog-semantik + fokusfälla i modaler, skip-länk, live-regioner, kontrollerad färgkontrast – se [eget avsnitt](#tillgänglighet) |
@@ -74,7 +74,7 @@ Byggd som ett litet, fokuserat projekt: en användare, en samling, inget cachnin
 | oxlint | 1 | Rust-baserad linter, snabbare alternativ till ESLint |
 | Vercel | – | Statisk hosting + serverless-funktioner för API-proxyn |
 
-Ingen server-state-cache (t.ex. React Query) används – appen är liten nog att klara sig med raka `async`-funktioner i `src/lib/` och lokal komponent-state. Filmdata cachas heller aldrig, så det finns ingen cache att invalidera.
+Ingen tredjeparts server-state-cache (t.ex. React Query) används – filmlistan cachas istället för hand i en enkel React Context (`MoviesProvider`, se [Arkitektur](#arkitektur)). TMDB-metadata (poster, handling osv.) cachas fortfarande aldrig – bara den egna samlingens grunddata (titel, rating, plats …) från Supabase.
 
 ---
 
@@ -106,9 +106,20 @@ Ingen server-state-cache (t.ex. React Query) används – appen är liten nog at
 
 **Dataflöde när en detaljsida visas:**
 
-1. `getMovie(id)` hämtar den sparade raden från Supabase (egen rating, plats, `tmdb_id`/`imdb_id`)
-2. Finns `tmdb_id`: `getMovieDetails()` hämtar poster/handling/skådespelare/genre **live** från TMDB via proxyn, varje gång sidan visas – ingenting cachas i databasen
-3. Saknas `tmdb_id`: `MatchMovieModal` öppnas automatiskt så filmen kan matchas mot TMDB (se [eget avsnitt](#importera-befintlig-samling--matcha-mot-tmdb))
+1. `MoviesProvider`s cache slås upp på `id` – nästan alltid en träff, eftersom man kom dit via en rad i tabellen/rutnätet. Inget nytt DB-anrop krävs då.
+2. Är filmen inte i cachen än (t.ex. en direktlänk innan hela samlingen hunnit laddas) hämtas den enskilt via `getMovie(id)`
+3. Finns `tmdb_id`: `getMovieDetails()` hämtar poster/handling/skådespelare/genre **live** från TMDB via proxyn, varje gång sidan visas – ingenting cachas i databasen
+4. Saknas `tmdb_id`: `MatchMovieModal` öppnas automatiskt så filmen kan matchas mot TMDB (se [eget avsnitt](#importera-befintlig-samling--matcha-mot-tmdb))
+
+### Cachning av filmlistan
+
+`MoviesProvider` (`src/lib/movies-context.tsx`) wrappar routningen i `main.tsx` och håller hela filmsamlingen i minnet. Eftersom bara `<Outlet />` byts ut vid navigering – inte providern ovanför den – överlever cachen flikbyten:
+
+- Filmlistan hämtas **en gång** vid appstart, inte på nytt varje gång Tabell-, Upptäck- eller en detaljsida monteras.
+- All sortering i tabellvyn (`compareMovies()`) sker i klienten mot den redan hämtade listan – att byta sorteringskolumn kräver alltså inget nytt anrop.
+- Lägg till/redigera/matcha/ta bort uppdaterar cachen direkt (`addMovieToCache`/`updateMovieInCache`/`removeMovieFromCache`) istället för att trigga en ny hämtning av hela listan.
+
+Innan detta hämtade Tabell- och Upptäck-vyn hela samlingen (1000+ rader) oberoende av varandra vid varje montering – dvs. varje flikbyte – och tabellvyn hämtade dessutom om från databasen vid varje ändrad sorteringskolumn.
 
 ---
 
@@ -120,12 +131,13 @@ PMDB/
 │   ├── _lib/
 │   │   ├── auth.ts                  # Delad hemlighet-koll (requireProxySecret) för TMDB/OMDb
 │   │   ├── clerkAuth.ts             # Verifierar Clerk-token (requireClerkAuth)
-│   │   └── supabase.ts              # Server-side Supabase-klient för movies.ts/locations.ts
+│   │   ├── supabase.ts              # Server-side Supabase-klient för movies.ts/locations.ts
+│   │   └── parseBody.ts             # Defensiv JSON-body-parsing, delad av movies.ts/locations.ts
 │   ├── tmdb-search.ts               # Proxy: TMDB-sökning
 │   ├── tmdb-movie.ts                # Proxy: filmdetaljer + credits/external_ids
 │   ├── omdb-rating.ts               # Proxy: IMDb-rating via OMDb
-│   ├── movies.ts                    # Skyddad: POST/PATCH/DELETE mot pmdb.movies
-│   └── locations.ts                 # Skyddad: POST/DELETE mot pmdb.locations
+│   ├── movies.ts                    # Skyddad: POST/PATCH/DELETE mot pmdb.movies, fält-whitelistat
+│   └── locations.ts                 # Skyddad: POST/PATCH/DELETE mot pmdb.locations, fält-whitelistat
 ├── public/
 │   ├── logo.png                     # Logotyp, ljust tema
 │   └── logo-dark.png                # Logotyp, mörkt tema
@@ -146,6 +158,7 @@ PMDB/
 │   ├── lib/
 │   │   ├── supabase.ts              # Klient, schema "pmdb" (läsning)
 │   │   ├── movies.ts                # Läsning direkt mot Supabase, skrivning via /api/movies
+│   │   ├── movies-context.tsx       # MoviesProvider/useMovies – delad cache av filmlistan
 │   │   ├── locations.ts             # Läsning direkt mot Supabase, skrivning via /api/locations
 │   │   ├── tmdb.ts                  # Klientsidans wrapper mot /api/tmdb-*
 │   │   ├── omdb.ts                  # Klientsidans wrapper mot /api/omdb-rating
@@ -155,7 +168,7 @@ PMDB/
 │   │   ├── movie.ts
 │   │   └── location.ts
 │   ├── App.tsx                      # Routes
-│   └── main.tsx                     # ClerkProvider · ThemeProvider · BrowserRouter
+│   └── main.tsx                     # ClerkProvider · ThemeProvider · MoviesProvider · BrowserRouter
 ├── supabase/
 │   ├── migrations/                  # 0001_init · 0002_locations · 0003_optional_tmdb
 │   ├── seed.sql                     # Testdata (16 filmer, 5 platser)
@@ -203,10 +216,10 @@ create unique index movies_user_tmdb_unique on pmdb.movies (user_id, tmdb_id);
 
 Byggs upp av tre migrationer i `supabase/migrations/`: `0001_init.sql` skapar schemat och `movies`, `0002_locations.sql` lägger till `locations` och byter `movies.location` (fri text) mot `location_id` (FK), `0003_optional_tmdb.sql` gör `tmdb_id`/`imdb_id` valfria så CSV-importerade filmer kan sparas utan TMDB-matchning. `movies_user_tmdb_unique` är fortfarande giltig med `tmdb_id = null`, eftersom Postgres unika index behandlar `NULL` som distinkta värden – flera omatchade filmer kan alltså samexistera.
 
-### Två PostgREST-fallgropar i `listMovies()`
+### Två PostgREST-fallgropar bakom `listMovies()`/`compareMovies()`
 
-- **Sortering på `location`** – `locations` hämtas embeddat (`location:locations(name)`). `supabase-js`s `order(col, { referencedTable })` sorterar bara rader *inuti* en till-många-relation; för en till-en-relation som denna har den ingen effekt på föräldraradernas ordning alls (`!inner` hade fixat det, men hade samtidigt uteslutit alla filmer utan plats ur listan). `listMovies()` sorterar därför på `location.name` i klienten istället.
-- **Rad-gräns på 1000** – PostgREST svarar med max 1000 rader per anrop om man inte sidbryter själv. Vid ~1250 filmer (sorterade på titel) föll allt efter rad 1000 tyst bort – i praktiken nästan alla titlar från sent i alfabetet. `listMovies()` sidbryter nu i loop med `.range()` (1000 åt gången, med `id` som sekundär sorteringsnyckel för deterministisk sidbrytning) tills hela samlingen hämtats.
+- **Sortering på `location`** – `locations` hämtas embeddat (`location:locations(name)`). `supabase-js`s `order(col, { referencedTable })` sorterar bara rader *inuti* en till-många-relation; för en till-en-relation som denna har den ingen effekt på föräldraradernas ordning alls (`!inner` hade fixat det, men hade samtidigt uteslutit alla filmer utan plats ur listan). Löst genom att aldrig be PostgREST sortera alls – `listMovies()` hämtar bara data, och `compareMovies()` sorterar hela listan (alla kolumner, inte bara `location`) i klienten istället, se [Cachning av filmlistan](#arkitektur).
+- **Rad-gräns på 1000** – PostgREST svarar med max 1000 rader per anrop om man inte sidbryter själv. Vid ~1250 filmer föll allt efter rad 1000 tyst bort – i praktiken nästan alla titlar från sent i alfabetet. `listMovies()` sidbryter nu i loop med `.range()` (1000 åt gången, med `id` som enda sorteringsnyckel för deterministisk sidbrytning – vilken kolumn som helst hade dugt eftersom resultatet ändå sorteras om i klienten) tills hela samlingen hämtats.
 
 ---
 
@@ -215,6 +228,7 @@ Byggs upp av tre migrationer i `supabase/migrations/`: `0001_init.sql` skapar sc
 - **API-nycklar aldrig i klienten** – `TMDB_API_KEY`/`OMDB_API_KEY`/`CLERK_SECRET_KEY` finns bara server-side i `api/*.ts` (Vercel Functions). Klienten anropar egna proxy-endpoints istället för TMDB/OMDb/Clerk direkt.
 - **Delad hemlighet-header** (`PROXY_SECRET` / `VITE_PROXY_SECRET`) – enkelt skydd mot att slumpmässiga bottar/scanners hittar den publika URL:en och förbrukar TMDB/OMDb-kvoten. **Inte** riktig autentisering: hemligheten skickas från klienten och finns därför i den publika JS-bundeln (`src/lib/proxy.ts`). Gäller bara `tmdb-*`/`omdb-rating` – se [Inloggning & behörighet](#inloggning--behörighet) för hur `movies`/`locations` faktiskt skyddas.
 - **Row Level Security** – aktiverat på `pmdb.movies` och `pmdb.locations`, men fortfarande med en öppen policy (`using (true)`) på databasnivå. RLS stoppar alltså inte i sig ett anrop som går direkt mot Supabase med anon-nyckeln. Det faktiska skyddet för skrivoperationer ligger istället i API-lagret (`api/movies.ts`/`api/locations.ts`), som kräver en verifierad Clerk-session innan något skrivs – se nästa avsnitt. Kolumnen `user_id` finns fortfarande förberedd på båda tabellerna för att kunna byta till `auth.uid() = user_id`-policyer om databasen någon gång ska vara fleranvändarmedveten på riktigt.
+- **Fält-whitelisting i API-lagret** – `api/movies.ts`/`api/locations.ts` skickar inte request-body:n rakt in i `insert()`/`update()`. En inloggad anropare kunde annars skicka med extra fält (t.ex. `id`, `user_id`, `created_at`) och styra kolumner som inte är tänkta att vara skrivbara via klienten. `pickInsertFields()`/`pickUpdateFields()` plockar bara ut de fält appen faktiskt använder innan anropet når Supabase.
 - **Supabase anon-nyckel** – publik med avsikt (Supabases säkerhetsmodell bygger på RLS, inte på en hemlig nyckel). Eftersom databasen delas med andra projekt ligger all PMDB-data i ett eget schema (`pmdb`), separat från andra scheman i samma databas.
 - **Secret key** (`sb_secret_...`, eller gamla `service_role`) används aldrig i projektet – den kringgår RLS helt och ska aldrig hamna i klientkod.
 
@@ -237,7 +251,7 @@ Samma Clerk-applikation (samma Google-inloggning) återanvänds från ett annat 
 
 ### Server – faktisk enforcement, inte bara dolda knappar
 
-`src/lib/movies.ts` och `src/lib/locations.ts` skriver **inte** längre direkt mot Supabase. Skrivoperationer (`addMovie`, `updateMovie`, `deleteMovie`, `addLocation`, `deleteLocation`) går via `fetch` till `/api/movies` respektive `/api/locations`, med token som `Authorization: Bearer <token>`-header. Läsning (`listMovies`, `getMovie`, `listLocations`) går fortfarande direkt mot Supabase som tidigare, eftersom bläddring inte kräver inloggning.
+`src/lib/movies.ts` och `src/lib/locations.ts` skriver **inte** längre direkt mot Supabase. Skrivoperationer (`addMovie`, `updateMovie`, `deleteMovie`, `addLocation`, `updateLocation`, `deleteLocation`) går via `fetch` till `/api/movies` respektive `/api/locations`, med token som `Authorization: Bearer <token>`-header. Läsning (`listMovies`, `getMovie`, `listLocations`) går fortfarande direkt mot Supabase som tidigare, eftersom bläddring inte kräver inloggning.
 
 `api/_lib/clerkAuth.ts` verifierar tokenet med `@clerk/backend`s `verifyToken()` innan `api/movies.ts`/`api/locations.ts` rör databasen. Ett anrop utan giltig token får `401` – **även om någon skulle anropa endpointen direkt och hoppa förbi UI:t helt**. Det är den här servern-sida-kontrollen, inte att knapparna råkar vara dolda, som faktiskt skyddar åtgärderna.
 
@@ -481,6 +495,7 @@ Ljust/mörkt läge styrs av klassen `.dark` på `<html>`, satt via `ThemeProvide
 ## Kända begränsningar
 
 - RLS på `pmdb.movies`/`pmdb.locations` är fortfarande öppen (`using (true)`) på databasnivå – skyddet för skrivoperationer sitter i API-lagret (Clerk-verifiering), inte i Supabase. Ett anrop direkt mot Supabase med anon-nyckeln skulle fortfarande lyckas. Se [Inloggning & behörighet](#inloggning--behörighet).
+- `requireClerkAuth` verifierar bara att sessionen är giltig, inte vem den tillhör – ett medvetet val. Eftersom Clerk-appen är återanvänd från ett annat projekt kan alltså vem som helst med ett konto där också hantera filmer/platser här, inte bara ägaren. En ägar-koll (jämför sessionens user-id mot ett hårdkodat värde) diskuterades men valdes bort.
 - `user_id`-kolumnerna i `movies` och `locations` är fortfarande förberedda men oanvända – appen har bara en användarroll (inloggad/utloggad), inte separata datamängder per person.
 - `PROXY_SECRET`-skyddet (TMDB/OMDb) är ett enkelt bot-filter, inte riktig autentisering – hemligheten skickas från och finns i klientens JS-bundle.
 - Importerade filmer (via CSV) saknar `tmdb_id`/`imdb_id` tills de matchas manuellt via **"Matcha mot TMDB"** på respektive detaljsida – ingen bulk-matchning finns ännu.
