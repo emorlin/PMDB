@@ -1,4 +1,5 @@
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Link, Outlet } from 'react-router-dom'
+import { useTheme } from '../lib/theme-context'
 
 const linkClass = ({ isActive }: { isActive: boolean }) =>
   `flex items-center min-h-11 px-3 py-2 rounded-md text-sm ${
@@ -6,6 +7,8 @@ const linkClass = ({ isActive }: { isActive: boolean }) =>
   }`
 
 export default function AppLayout() {
+  const { theme } = useTheme()
+
   return (
     <div className="min-h-screen bg-bg text-text">
       <a
@@ -16,7 +19,13 @@ export default function AppLayout() {
       </a>
       <header className="border-b border-border">
         <div className="mx-auto max-w-6xl flex flex-wrap items-center justify-between gap-2 px-4 sm:px-6 py-2 sm:py-3">
-          <span className="font-medium">Mathias filmsamling</span>
+          <Link to="/" className="flex items-center rounded-md focus-visible:outline-offset-4">
+            <img
+              src={theme === 'dark' ? '/logo-dark.png' : '/logo.png'}
+              alt="Mathias filmsamling"
+              className="h-9 w-auto"
+            />
+          </Link>
           <nav aria-label="Huvudmeny" className="flex flex-wrap gap-1">
             <NavLink to="/" end className={linkClass}>
               Tabell
