@@ -1,17 +1,22 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { requireClerkAuth } from './_lib/clerkAuth.js'
 import { supabase } from './_lib/supabase.js'
+import { parseBody } from './_lib/parseBody.js'
 
 const SELECT_WITH_LOCATION = '*, location:locations(name)'
 
-function parseBody(req: VercelRequest): Record<string, unknown> {
-  const raw = req.body ?? {}
-  if (typeof raw !== 'string') return raw
-  try {
-    return JSON.parse(raw)
-  } catch {
-    return {}
-  }
+// Endast dessa fält får sättas via insert – hindrar klienten från att skicka
+// med t.ex. id/user_id/created_at och därmed styra kolumner den inte ska nå.
+function pickInsertFields(body: Record<string, unknown>) {
+  const { tmdb_id, imdb_id, title, year, runtime_minutes, my_rating, imdb_rating, location_id } = body
+  return { tmdb_id, imdb_id, title, year, runtime_minutes, my_rating, imdb_rating, location_id }
+}
+
+// Smalare whitelist för uppdatering – matchar de fält appen faktiskt
+// redigerar (rating/plats vid "Redigera", tmdb/imdb-fält vid TMDB-matchning).
+function pickUpdateFields(body: Record<string, unknown>) {
+  const { tmdb_id, imdb_id, imdb_rating, my_rating, location_id } = body
+  return { tmdb_id, imdb_id, imdb_rating, my_rating, location_id }
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -21,7 +26,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'POST') {
     const { data, error } = await supabase
       .from('movies')
-      .insert(parseBody(req))
+      .insert(pickInsertFields(parseBody(req)))
       .select(SELECT_WITH_LOCATION)
       .single()
     if (error) return res.status(400).json({ error: error.message })
@@ -33,7 +38,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!id) return res.status(400).json({ error: 'Missing id' })
     const { data, error } = await supabase
       .from('movies')
-      .update(parseBody(req))
+      .update(pickUpdateFields(parseBody(req)))
       .eq('id', id)
       .select(SELECT_WITH_LOCATION)
       .single()

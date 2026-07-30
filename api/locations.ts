@@ -1,28 +1,15 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { requireClerkAuth } from './_lib/clerkAuth.js'
 import { supabase } from './_lib/supabase.js'
-
-function parseBody(req: VercelRequest): Record<string, unknown> {
-  const raw = req.body ?? {}
-  if (typeof raw !== 'string') return raw
-  try {
-    return JSON.parse(raw)
-  } catch {
-    return {}
-  }
-}
+import { parseBody } from './_lib/parseBody.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const userId = await requireClerkAuth(req, res)
   if (!userId) return
 
   if (req.method === 'POST') {
-    const body = parseBody(req)
-    const { data, error } = await supabase
-      .from('locations')
-      .insert({ name: body.name })
-      .select()
-      .single()
+    const { name } = parseBody(req)
+    const { data, error } = await supabase.from('locations').insert({ name }).select().single()
     if (error) return res.status(400).json({ error: error.message })
     return res.status(200).json(data)
   }
