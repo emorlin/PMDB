@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth, SignedIn } from '@clerk/clerk-react'
 import { getMovie, deleteMovie, updateMovie } from '../lib/movies'
+import { useMovies } from '../lib/movies-context'
 import { getMovieDetails, posterUrl, type TmdbMovieDetails } from '../lib/tmdb'
 import { listLocations } from '../lib/locations'
 import MatchMovieModal from '../components/MatchMovieModal'
@@ -19,6 +20,7 @@ export default function MovieDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { getToken, isSignedIn } = useAuth()
+  const { movies: cachedMovies, updateMovieInCache, removeMovieFromCache } = useMovies()
   const [movie, setMovie] = useState<Movie | null>(null)
   const [tmdb, setTmdb] = useState<TmdbMovieDetails | null>(null)
   const [loading, setLoading] = useState(true)
@@ -38,9 +40,22 @@ export default function MovieDetailPage() {
 
   useEffect(() => {
     if (!id) return
-    setLoading(true)
     setError(null)
     setTmdb(null)
+
+    // Filmen finns nästan alltid redan i den delade cachen (kom hit via en
+    // rad i tabellen/rutnätet) – då slipper vi ett extra DB-anrop helt.
+    // Faller tillbaka på ett eget anrop t.ex. vid en direktlänk innan
+    // cachen hunnit laddas klart.
+    const cached = cachedMovies.find((m) => m.id === id)
+    if (cached) {
+      setMovie(cached)
+      setShowMatchModal(cached.tmdb_id == null && isSignedIn === true)
+      setLoading(false)
+      return
+    }
+
+    setLoading(true)
     getMovie(id)
       .then((m) => {
         setMovie(m)
@@ -73,6 +88,7 @@ export default function MovieDetailPage() {
     const token = await getToken()
     if (!token) return
     await deleteMovie(movie.id, token)
+    removeMovieFromCache(movie.id)
     navigate('/')
   }
 
@@ -98,6 +114,7 @@ export default function MovieDetailPage() {
         token,
       )
       setMovie(updated)
+      updateMovieInCache(updated)
       setEditing(false)
     } catch (e) {
       setError((e as Error).message)
@@ -270,7 +287,10 @@ export default function MovieDetailPage() {
         <MatchMovieModal
           movie={movie}
           onClose={() => setShowMatchModal(false)}
-          onMatched={(updated) => setMovie(updated)}
+          onMatched={(updated) => {
+            setMovie(updated)
+            updateMovieInCache(updated)
+          }}
         />
       )}
     </div>

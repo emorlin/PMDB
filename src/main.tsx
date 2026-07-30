@@ -5,6 +5,7 @@ import { ClerkProvider } from '@clerk/clerk-react'
 import './index.css'
 import App from './App.tsx'
 import { ThemeProvider } from './lib/theme-context.tsx'
+import { MoviesProvider } from './lib/movies-context.tsx'
 
 const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
 
@@ -18,9 +19,11 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ClerkProvider publishableKey={clerkPublishableKey ?? ''}>
       <ThemeProvider>
-        <BrowserRouter>
-          <App />
-        </BrowserRouter>
+        <MoviesProvider>
+          <BrowserRouter>
+            <App />
+          </BrowserRouter>
+        </MoviesProvider>
       </ThemeProvider>
     </ClerkProvider>
   </StrictMode>,

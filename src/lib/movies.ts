@@ -8,24 +8,20 @@ const SELECT_WITH_LOCATION = '*, location:locations(name)'
 // alfabetet, försvinner helt ur listan).
 const FETCH_PAGE_SIZE = 1000
 
-export async function listMovies(sort: SortColumn, dir: SortDirection): Promise<Movie[]> {
+// Hämtar hela samlingen en gång (se MoviesProvider – cachas i minnet och
+// sidbryts inte om vid navigering). Sorteringsordning spelar ingen roll här,
+// bara att .range() sidbryter deterministiskt – sortering sker i klienten
+// med compareMovies() istället, så en sortändring aldrig kräver ett nytt anrop.
+export async function listMovies(): Promise<Movie[]> {
   const movies: Movie[] = []
   let from = 0
 
   for (;;) {
-    let query = supabase.from('movies').select(SELECT_WITH_LOCATION)
-
-    // PostgREST kan bara sortera föräldrarader på ett embeddat fälts kolumn om
-    // relationen hämtas med !inner (en riktig join) – men det skulle utesluta
-    // filmer utan plats ur listan helt. Sortera istället i klienten för "location".
-    if (sort !== 'location') {
-      query = query.order(sort, { ascending: dir === 'asc', nullsFirst: false })
-    }
-    // Sekundär sortering på id ger deterministisk ordning så att .range()
-    // sidbryter stabilt istället för att riskera hoppa över eller dubblera rader.
-    query = query.order('id', { ascending: true }).range(from, from + FETCH_PAGE_SIZE - 1)
-
-    const { data, error } = await query
+    const { data, error } = await supabase
+      .from('movies')
+      .select(SELECT_WITH_LOCATION)
+      .order('id', { ascending: true })
+      .range(from, from + FETCH_PAGE_SIZE - 1)
     if (error) throw error
     const page = data as unknown as Movie[]
     movies.push(...page)
@@ -33,17 +29,33 @@ export async function listMovies(sort: SortColumn, dir: SortDirection): Promise<
     from += FETCH_PAGE_SIZE
   }
 
+  return movies
+}
+
+// Klientsidans motsvarighet till PostgRESTs .order() – all sortering sker nu
+// i klienten mot den cachade listan (se MoviesProvider), så det spelar ingen
+// roll att PostgREST inte kan sortera på ett embeddat fälts kolumn (location).
+export function compareMovies(a: Movie, b: Movie, sort: SortColumn, dir: SortDirection): number {
+  const dirMultiplier = dir === 'asc' ? 1 : -1
+
   if (sort === 'location') {
-    const dirMultiplier = dir === 'asc' ? 1 : -1
-    movies.sort((a, b) => {
-      if (!a.location && !b.location) return 0
-      if (!a.location) return 1
-      if (!b.location) return -1
-      return dirMultiplier * a.location.name.localeCompare(b.location.name, 'sv')
-    })
+    const an = a.location?.name
+    const bn = b.location?.name
+    if (!an && !bn) return 0
+    if (!an) return 1
+    if (!bn) return -1
+    return dirMultiplier * an.localeCompare(bn, 'sv')
   }
 
-  return movies
+  const av = a[sort]
+  const bv = b[sort]
+  if (av == null && bv == null) return 0
+  if (av == null) return 1
+  if (bv == null) return -1
+  if (typeof av === 'string' && typeof bv === 'string') {
+    return dirMultiplier * av.localeCompare(bv, 'sv')
+  }
+  return dirMultiplier * ((av as number) - (bv as number))
 }
 
 export async function getMovie(id: string): Promise<Movie> {

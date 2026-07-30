@@ -1,38 +1,20 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { SignedIn } from '@clerk/clerk-react'
 import MovieTable from '../components/MovieTable'
 import AddMovieModal from '../components/AddMovieModal'
-import { listMovies } from '../lib/movies'
-import type { Movie, SortColumn, SortDirection } from '../types/movie'
+import { compareMovies } from '../lib/movies'
+import { useMovies } from '../lib/movies-context'
+import type { SortColumn, SortDirection } from '../types/movie'
 
 export default function MovieTablePage() {
   const navigate = useNavigate()
-  const [movies, setMovies] = useState<Movie[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const { movies, loading, error, addMovieToCache } = useMovies()
   const [sort, setSort] = useState<SortColumn>('title')
   const [dir, setDir] = useState<SortDirection>('asc')
   const [showAdd, setShowAdd] = useState(false)
   const [query, setQuery] = useState('')
   const [onlyUnseen, setOnlyUnseen] = useState(false)
-
-  async function load() {
-    setLoading(true)
-    setError(null)
-    try {
-      setMovies(await listMovies(sort, dir))
-    } catch (e) {
-      setError((e as Error).message)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    load()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sort, dir])
 
   function handleSort(col: SortColumn) {
     if (col === sort) {
@@ -47,12 +29,14 @@ export default function MovieTablePage() {
 
   const filteredMovies = useMemo(() => {
     const q = query.trim().toLowerCase()
-    return movies.filter((m) => {
-      if (onlyUnseen && m.my_rating !== null) return false
-      if (q && !m.title.toLowerCase().includes(q)) return false
-      return true
-    })
-  }, [movies, query, onlyUnseen])
+    return movies
+      .filter((m) => {
+        if (onlyUnseen && m.my_rating !== null) return false
+        if (q && !m.title.toLowerCase().includes(q)) return false
+        return true
+      })
+      .sort((a, b) => compareMovies(a, b, sort, dir))
+  }, [movies, query, onlyUnseen, sort, dir])
 
   const filterActive = query.trim() !== '' || onlyUnseen
 
@@ -135,7 +119,7 @@ export default function MovieTablePage() {
         <AddMovieModal
           onClose={() => setShowAdd(false)}
           onAdded={(m) => {
-            setMovies((prev) => [...prev, m])
+            addMovieToCache(m)
             navigate(`/movie/${m.id}`)
           }}
         />

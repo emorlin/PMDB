@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { SignedIn } from '@clerk/clerk-react'
 import AlphabetFilter from '../components/AlphabetFilter'
 import PosterGrid from '../components/PosterGrid'
 import AddMovieModal from '../components/AddMovieModal'
-import { listMovies } from '../lib/movies'
+import { compareMovies } from '../lib/movies'
+import { useMovies } from '../lib/movies-context'
 import type { Movie } from '../types/movie'
 
 const PAGE_SIZE = 48
@@ -26,8 +27,7 @@ function shuffle<T>(arr: T[]): T[] {
 export default function DiscoverPage() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  const [all, setAll] = useState<Movie[]>([])
-  const [loading, setLoading] = useState(true)
+  const { movies, loading, addMovieToCache } = useMovies()
   const [onlyUnseen, setOnlyUnseen] = useState(false)
   const [randomOrder, setRandomOrder] = useState<Movie[] | null>(null)
   const [showAdd, setShowAdd] = useState(false)
@@ -35,11 +35,10 @@ export default function DiscoverPage() {
   const letter = searchParams.get('letter')
   const page = Math.max(1, parseInt(searchParams.get('page') ?? '1', 10) || 1)
 
-  useEffect(() => {
-    listMovies('title', 'asc')
-      .then(setAll)
-      .finally(() => setLoading(false))
-  }, [])
+  const all = useMemo(
+    () => [...movies].sort((a, b) => compareMovies(a, b, 'title', 'asc')),
+    [movies],
+  )
 
   const filtered = useMemo(() => {
     const base = randomOrder ?? all
@@ -161,7 +160,7 @@ export default function DiscoverPage() {
         <AddMovieModal
           onClose={() => setShowAdd(false)}
           onAdded={(m) => {
-            setAll((prev) => [...prev, m])
+            addMovieToCache(m)
             navigate(`/movie/${m.id}`)
           }}
         />
