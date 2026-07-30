@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { SignedIn } from '@clerk/clerk-react'
 import AlphabetFilter from '../components/AlphabetFilter'
 import PosterGrid from '../components/PosterGrid'
@@ -25,13 +25,15 @@ function shuffle<T>(arr: T[]): T[] {
 
 export default function DiscoverPage() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [all, setAll] = useState<Movie[]>([])
   const [loading, setLoading] = useState(true)
-  const [letter, setLetter] = useState<string | null>(null)
   const [onlyUnseen, setOnlyUnseen] = useState(false)
   const [randomOrder, setRandomOrder] = useState<Movie[] | null>(null)
-  const [page, setPage] = useState(1)
   const [showAdd, setShowAdd] = useState(false)
+
+  const letter = searchParams.get('letter')
+  const page = Math.max(1, parseInt(searchParams.get('page') ?? '1', 10) || 1)
 
   useEffect(() => {
     listMovies('title', 'asc')
@@ -48,21 +50,47 @@ export default function DiscoverPage() {
     })
   }, [all, randomOrder, letter, onlyUnseen])
 
-  useEffect(() => {
-    setPage(1)
-  }, [letter, onlyUnseen, randomOrder])
-
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
-  const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+  const currentPage = Math.min(page, totalPages)
+  const pageItems = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
+
+  function goToPage(p: number) {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      if (p > 1) next.set('page', String(p))
+      else next.delete('page')
+      return next
+    })
+  }
 
   function handleShuffle() {
     setRandomOrder(shuffle(all))
-    setLetter(null)
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      next.delete('letter')
+      next.delete('page')
+      return next
+    })
   }
 
   function handleLetterSelect(l: string | null) {
     setRandomOrder(null)
-    setLetter(l)
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      if (l) next.set('letter', l)
+      else next.delete('letter')
+      next.delete('page')
+      return next
+    })
+  }
+
+  function handleOnlyUnseenChange(checked: boolean) {
+    setOnlyUnseen(checked)
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      next.delete('page')
+      return next
+    })
   }
 
   return (
@@ -74,7 +102,7 @@ export default function DiscoverPage() {
           <input
             type="checkbox"
             checked={onlyUnseen}
-            onChange={(e) => setOnlyUnseen(e.target.checked)}
+            onChange={(e) => handleOnlyUnseenChange(e.target.checked)}
           />
           Endast osedda
         </label>
@@ -108,18 +136,18 @@ export default function DiscoverPage() {
           {totalPages > 1 && (
             <nav aria-label="Sidnumrering" className="flex items-center justify-center gap-3 mt-5 text-sm">
               <button
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1}
+                onClick={() => goToPage(Math.max(1, currentPage - 1))}
+                disabled={currentPage === 1}
                 className="rounded-md border border-border px-3 py-1.5 min-h-11 disabled:opacity-40"
               >
                 Föregående
               </button>
               <span aria-live="polite" className="text-text-muted">
-                Sida {page} av {totalPages}
+                Sida {currentPage} av {totalPages}
               </span>
               <button
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
+                onClick={() => goToPage(Math.min(totalPages, currentPage + 1))}
+                disabled={currentPage === totalPages}
                 className="rounded-md border border-border px-3 py-1.5 min-h-11 disabled:opacity-40"
               >
                 Nästa
