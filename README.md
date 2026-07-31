@@ -9,6 +9,7 @@
 ![Supabase](https://img.shields.io/badge/Supabase-Postgres-3ECF8E?logo=supabase&logoColor=white)
 ![Clerk](https://img.shields.io/badge/Auth-Clerk-6C47FF?logo=clerk&logoColor=white)
 ![Vercel](https://img.shields.io/badge/Deploy-Vercel-000000?logo=vercel&logoColor=white)
+![PWA](https://img.shields.io/badge/PWA-installerbar-5A0FC8?logo=pwa&logoColor=white)
 
 ---
 
@@ -20,6 +21,7 @@
 - [Arkitektur](#arkitektur)
 - [Projektstruktur](#projektstruktur)
 - [Databasmodell](#databasmodell)
+- [PWA & offline-cachning](#pwa--offline-cachning)
 - [Säkerhet](#säkerhet)
 - [Inloggning & behörighet](#inloggning--behörighet)
 - [Responsiv design](#responsiv-design)
@@ -55,6 +57,7 @@ Byggd som ett litet, fokuserat projekt: en användare, en samling, inget cachnin
 | **Om** | Kort, användarvänlig info om appen och dess funktioner, med länk till källkoden på GitHub |
 | **Inloggning** | Google-inloggning (via Clerk) krävs för att lägga till, redigera, matcha eller ta bort filmer, samt hantera platser. Bläddra, söka och filtrera är öppet för alla – se [eget avsnitt](#inloggning--behörighet) |
 | **Tillgänglighet** | WCAG 2.1 AA: tangentbordsnavigerbar sorterbar tabell, dialog-semantik + fokusfälla i modaler, skip-länk, live-regioner, kontrollerad färgkontrast – se [eget avsnitt](#tillgänglighet) |
+| **Installerbar app (PWA)** | Går att lägga till på hemskärm/skrivbord med egen ikon. App-skalet precachas av en service worker och öppnas därför i princip direkt, utan att vänta på nätverket – se [PWA & offline-cachning](#pwa--offline-cachning) |
 
 ---
 
@@ -72,6 +75,7 @@ Byggd som ett litet, fokuserat projekt: en användare, en samling, inget cachnin
 | @clerk/backend | 3 | Verifierar Clerk-sessioner server-side i `api/movies.ts`/`api/locations.ts` |
 | @vercel/node | 5 | Typer för Vercel Functions (`api/*.ts`) |
 | oxlint | 1 | Rust-baserad linter, snabbare alternativ till ESLint |
+| vite-plugin-pwa | 1 | Genererar web app manifest + service worker (Workbox) för installerbarhet och offline-cachning |
 | Vercel | – | Statisk hosting + serverless-funktioner för API-proxyn |
 
 Ingen tredjeparts server-state-cache (t.ex. React Query) används – filmlistan cachas istället för hand i en enkel React Context (`MoviesProvider`, se [Arkitektur](#arkitektur)). TMDB-metadata (poster, handling osv.) cachas fortfarande aldrig – bara den egna samlingens grunddata (titel, rating, plats …) från Supabase.
@@ -140,15 +144,19 @@ PMDB/
 │   └── locations.ts                 # Skyddad: POST/PATCH/DELETE mot pmdb.locations, fält-whitelistat
 ├── public/
 │   ├── logo.png                     # Logotyp, ljust tema
-│   └── logo-dark.png                # Logotyp, mörkt tema
+│   ├── logo-dark.png                # Logotyp, mörkt tema
+│   ├── favicon.png / apple-touch-icon.png
+│   └── pwa-192.png / pwa-512.png / pwa-maskable-512.png  # PWA-manifestikoner
 ├── src/
 │   ├── components/
 │   │   ├── AddMovieModal.tsx        # Sök + lägg till ny film (dialog, fokusfälla)
 │   │   ├── MatchMovieModal.tsx      # Matcha en befintlig film mot TMDB i efterhand
 │   │   ├── AppLayout.tsx            # Header, nav, inloggningsknapp, footer, <Outlet />
 │   │   ├── MovieTable.tsx           # Sorterbar tabell (desktop) / kortlista (mobil)
+│   │   ├── MovieTableSkeleton.tsx   # Platshållare medan filmlistan laddas (undviker layouthopp)
 │   │   ├── AlphabetFilter.tsx       # A–Ö-filter: horisontell rad (desktop) / dropdown (mobil)
-│   │   └── PosterGrid.tsx           # Responsivt postergrid för Upptäck-vyn
+│   │   ├── PosterGrid.tsx           # Responsivt postergrid för Upptäck-vyn
+│   │   └── PwaUpdatePrompt.tsx      # "Ny version tillgänglig"-ruta, se PWA & offline-cachning
 │   ├── pages/
 │   │   ├── MovieTablePage.tsx       # "/" – tabellvy, sök, statistik, lägg till film
 │   │   ├── DiscoverPage.tsx         # "/discover" – upptäck egen samling (bokstav/sida i URL:en)
@@ -220,6 +228,22 @@ Byggs upp av tre migrationer i `supabase/migrations/`: `0001_init.sql` skapar sc
 
 - **Sortering på `location`** – `locations` hämtas embeddat (`location:locations(name)`). `supabase-js`s `order(col, { referencedTable })` sorterar bara rader *inuti* en till-många-relation; för en till-en-relation som denna har den ingen effekt på föräldraradernas ordning alls (`!inner` hade fixat det, men hade samtidigt uteslutit alla filmer utan plats ur listan). Löst genom att aldrig be PostgREST sortera alls – `listMovies()` hämtar bara data, och `compareMovies()` sorterar hela listan (alla kolumner, inte bara `location`) i klienten istället, se [Cachning av filmlistan](#arkitektur).
 - **Rad-gräns på 1000** – PostgREST svarar med max 1000 rader per anrop om man inte sidbryter själv. Vid ~1250 filmer föll allt efter rad 1000 tyst bort – i praktiken nästan alla titlar från sent i alfabetet. `listMovies()` sidbryter nu i loop med `.range()` (1000 åt gången, med `id` som enda sorteringsnyckel för deterministisk sidbrytning – vilken kolumn som helst hade dugt eftersom resultatet ändå sorteras om i klienten) tills hela samlingen hämtats.
+
+---
+
+## PWA & offline-cachning
+
+Appen går att installera som en Progressive Web App – "Lägg till på hemskärmen" på mobil, eller Chrome/Edges "Installera app" på desktop – via `vite-plugin-pwa` (Workbox under huven).
+
+- **App-skalet precachas.** Vid varje produktionsbygge listar service workern all HTML/JS/CSS som ett precache-manifest. Första besöket hämtar dem som vanligt, men varje besök därefter – inklusive öppning av den installerade appen – serveras de direkt från cachen istället för nätverket. Det är den här delen som faktiskt löser "appen tar lång tid att öppna": utan en service worker laddade den installerade genvägen om hela bundlen (JS + CSS) från nätet vid varje öppning, precis som en vanlig flik.
+- **Filmdata (Supabase)** cachas med en *stale-while-revalidate*-strategi: senast kända svar visas direkt medan ett färskt anrop görs i bakgrunden och uppdaterar cachen till nästa gång.
+- **TMDB-posterbilder** cachas *cache-first* i 30 dagar – de ändras aldrig för en given film, så ett nätverksanrop är onödigt efter första visningen.
+- **Uppdateringar.** `registerType: 'prompt'` (inte `autoUpdate`) valdes medvetet – en installerad app som byter kod under användarens fötter utan förvarning är förvirrande. `PwaUpdatePrompt.tsx` (`virtual:pwa-register/react`) visar istället en liten "Ny version tillgänglig – Uppdatera"-ruta så fort en ny build har deployats och användaren väl laddar om eller navigerar.
+- **Manifest & ikoner** (`public/pwa-192.png`, `pwa-512.png`, `pwa-maskable-512.png`) definieras i `vite.config.ts` – namn, tema-/bakgrundsfärg (`#0f1115`), `display: "standalone"`, samt en separat maskable-ikon med extra säkerhetsmarginal så OS:ets ikonmaskning (cirkel/rundad kvadrat) inte klipper bort delar av loggan.
+
+**Känt fallgrop:** en genväg som redan lagts till på hemskärmen/skrivbordet *innan* manifestet fanns är bara en vanlig bokmärkes-genväg, inte en riktig installerad PWA. Efter en deploy med detta måste den tas bort och läggas till på nytt för att webbläsaren ska upptäcka manifestet och installera appen på riktigt (med ikon, precache och allt).
+
+Service workern byggs bara i produktionsbygget (`npm run build`) – `vite`/`vercel dev` kör utan den, så den lokala utvecklingsupplevelsen är opåverkad.
 
 ---
 
@@ -500,6 +524,7 @@ Ljust/mörkt läge styrs av klassen `.dark` på `<html>`, satt via `ThemeProvide
 - `PROXY_SECRET`-skyddet (TMDB/OMDb) är ett enkelt bot-filter, inte riktig autentisering – hemligheten skickas från och finns i klientens JS-bundle.
 - Importerade filmer (via CSV) saknar `tmdb_id`/`imdb_id` tills de matchas manuellt via **"Matcha mot TMDB"** på respektive detaljsida – ingen bulk-matchning finns ännu.
 - Inga automatiska tester ännu.
+- En hemskärms-/skrivbordsgenväg som lades till innan PWA-manifestet infördes räknas inte som en riktig installation – se [PWA & offline-cachning](#pwa--offline-cachning).
 
 ---
 

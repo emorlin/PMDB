@@ -1,6 +1,7 @@
 import { NavLink, Link, Outlet } from 'react-router-dom'
 import { SignedIn, SignedOut, SignInButton, UserButton, ClerkLoading, ClerkLoaded } from '@clerk/clerk-react'
 import { useTheme } from '../lib/theme-context'
+import PwaUpdatePrompt from './PwaUpdatePrompt'
 
 const GITHUB_URL = 'https://github.com/emorlin/PMDB'
 
@@ -100,6 +101,7 @@ export default function AppLayout() {
           </div>
         </div>
       </footer>
+      <PwaUpdatePrompt />
     </div>
   )
 }
