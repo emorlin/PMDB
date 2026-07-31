@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { SignedIn } from '@clerk/clerk-react'
+import { SignedIn, ClerkLoading, ClerkLoaded } from '@clerk/clerk-react'
 import AlphabetFilter from '../components/AlphabetFilter'
 import PosterGrid from '../components/PosterGrid'
 import AddMovieModal from '../components/AddMovieModal'
@@ -112,14 +112,19 @@ export default function DiscoverPage() {
           >
             Slumpa filmer
           </button>
-          <SignedIn>
-            <button
-              onClick={() => setShowAdd(true)}
-              className="rounded-md bg-accent text-black px-3 py-2 min-h-11 text-sm font-medium"
-            >
-              + Lägg till film
-            </button>
-          </SignedIn>
+          <ClerkLoading>
+            <div className="w-36 h-11 rounded-md bg-surface-2 animate-pulse" aria-hidden="true" />
+          </ClerkLoading>
+          <ClerkLoaded>
+            <SignedIn>
+              <button
+                onClick={() => setShowAdd(true)}
+                className="rounded-md bg-accent text-black px-3 py-2 min-h-11 text-sm font-medium"
+              >
+                + Lägg till film
+              </button>
+            </SignedIn>
+          </ClerkLoaded>
         </div>
       </div>
 

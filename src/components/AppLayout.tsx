@@ -1,5 +1,5 @@
 import { NavLink, Link, Outlet } from 'react-router-dom'
-import { SignedIn, SignedOut, SignInButton, UserButton } from '@clerk/clerk-react'
+import { SignedIn, SignedOut, SignInButton, UserButton, ClerkLoading, ClerkLoaded } from '@clerk/clerk-react'
 import { useTheme } from '../lib/theme-context'
 
 const GITHUB_URL = 'https://github.com/emorlin/PMDB'
@@ -46,16 +46,21 @@ export default function AppLayout() {
                 Om
               </NavLink>
             </nav>
-            <SignedIn>
-              <UserButton />
-            </SignedIn>
-            <SignedOut>
-              <SignInButton mode="modal">
-                <button className="rounded-md border border-border px-3 py-2 min-h-11 text-sm hover:bg-surface-2">
-                  Logga in
-                </button>
-              </SignInButton>
-            </SignedOut>
+            <ClerkLoading>
+              <div className="w-11 h-11 rounded-full bg-surface-2 animate-pulse" aria-hidden="true" />
+            </ClerkLoading>
+            <ClerkLoaded>
+              <SignedIn>
+                <UserButton />
+              </SignedIn>
+              <SignedOut>
+                <SignInButton mode="modal">
+                  <button className="rounded-md border border-border px-3 py-2 min-h-11 text-sm hover:bg-surface-2">
+                    Logga in
+                  </button>
+                </SignInButton>
+              </SignedOut>
+            </ClerkLoaded>
           </div>
         </div>
       </header>

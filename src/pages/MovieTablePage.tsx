@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { SignedIn } from '@clerk/clerk-react'
+import { SignedIn, ClerkLoading, ClerkLoaded } from '@clerk/clerk-react'
 import MovieTable from '../components/MovieTable'
+import MovieTableSkeleton from '../components/MovieTableSkeleton'
 import AddMovieModal from '../components/AddMovieModal'
 import { compareMovies } from '../lib/movies'
 import { useMovies } from '../lib/movies-context'
@@ -44,14 +45,19 @@ export default function MovieTablePage() {
     <div>
       <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
         <h1 className="text-xl font-medium">Mathias Filmsamling</h1>
-        <SignedIn>
-          <button
-            onClick={() => setShowAdd(true)}
-            className="rounded-md bg-accent text-black px-3 py-2 min-h-11 text-sm font-medium"
-          >
-            + Lägg till film
-          </button>
-        </SignedIn>
+        <ClerkLoading>
+          <div className="w-36 h-11 rounded-md bg-surface-2 animate-pulse" aria-hidden="true" />
+        </ClerkLoading>
+        <ClerkLoaded>
+          <SignedIn>
+            <button
+              onClick={() => setShowAdd(true)}
+              className="rounded-md bg-accent text-black px-3 py-2 min-h-11 text-sm font-medium"
+            >
+              + Lägg till film
+            </button>
+          </SignedIn>
+        </ClerkLoaded>
       </div>
 
       <div className="flex flex-wrap gap-3 mb-4">
@@ -100,9 +106,12 @@ export default function MovieTablePage() {
         </div>
       )}
       {loading ? (
-        <div role="status" className="text-text-muted text-sm">
-          Laddar...
-        </div>
+        <>
+          <div role="status" className="sr-only">
+            Laddar filmer...
+          </div>
+          <MovieTableSkeleton />
+        </>
       ) : (
         <MovieTable
           movies={filteredMovies}
