@@ -26,10 +26,12 @@ export default function MovieDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [editing, setEditing] = useState(false)
+  const [editTitle, setEditTitle] = useState('')
   const [editRating, setEditRating] = useState('')
   const [editLocationId, setEditLocationId] = useState('')
   const [locations, setLocations] = useState<Location[]>([])
   const [saving, setSaving] = useState(false)
+  const [editError, setEditError] = useState<string | null>(null)
   const [showMatchModal, setShowMatchModal] = useState(false)
 
   useEffect(() => {
@@ -94,6 +96,8 @@ export default function MovieDetailPage() {
 
   function startEdit() {
     if (!movie) return
+    setEditError(null)
+    setEditTitle(movie.title)
     setEditRating(movie.my_rating?.toString() ?? '')
     setEditLocationId(movie.location_id ?? '')
     setEditing(true)
@@ -101,13 +105,20 @@ export default function MovieDetailPage() {
 
   async function handleSaveEdit() {
     if (!movie) return
+    const trimmedTitle = editTitle.trim()
+    if (!trimmedTitle) {
+      setEditError('Titel kan inte vara tom.')
+      return
+    }
     setSaving(true)
+    setEditError(null)
     try {
       const token = await getToken()
       if (!token) throw new Error('Du måste vara inloggad för att redigera filmer.')
       const updated = await updateMovie(
         movie.id,
         {
+          title: trimmedTitle,
           my_rating: editRating ? parseInt(editRating, 10) : null,
           location_id: editLocationId || null,
         },
@@ -117,7 +128,7 @@ export default function MovieDetailPage() {
       updateMovieInCache(updated)
       setEditing(false)
     } catch (e) {
-      setError((e as Error).message)
+      setEditError((e as Error).message)
     } finally {
       setSaving(false)
     }
@@ -175,53 +186,72 @@ export default function MovieDetailPage() {
           )}
 
           {editing ? (
-            <div className="flex flex-wrap gap-3 mb-3 items-end">
-              <div>
-                <label htmlFor="edit-rating" className="block text-xs text-text-muted mb-1">
-                  Min rating
+            <div className="mb-3">
+              {editError && (
+                <div role="alert" className="text-xs text-danger mb-2">
+                  {editError}
+                </div>
+              )}
+              <div className="mb-3">
+                <label htmlFor="edit-title" className="block text-xs text-text-muted mb-1">
+                  Titel
                 </label>
                 <input
-                  id="edit-rating"
-                  type="number"
-                  inputMode="numeric"
-                  min={1}
-                  max={10}
-                  value={editRating}
-                  onChange={(e) => setEditRating(e.target.value)}
-                  className="w-20 rounded-md bg-surface-2 border border-border px-2 py-1.5 text-sm focus:border-accent"
+                  id="edit-title"
+                  type="text"
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  className="w-full max-w-sm rounded-md bg-surface-2 border border-border px-2 py-1.5 text-sm focus:border-accent"
                 />
               </div>
-              <div>
-                <label htmlFor="edit-location" className="block text-xs text-text-muted mb-1">
-                  Placering
-                </label>
-                <select
-                  id="edit-location"
-                  value={editLocationId}
-                  onChange={(e) => setEditLocationId(e.target.value)}
-                  className="w-36 rounded-md bg-surface-2 border border-border px-2 py-1.5 text-sm focus:border-accent"
+              <div className="flex flex-wrap gap-3 items-end">
+                <div>
+                  <label htmlFor="edit-rating" className="block text-xs text-text-muted mb-1">
+                    Min rating
+                  </label>
+                  <input
+                    id="edit-rating"
+                    type="number"
+                    inputMode="numeric"
+                    min={1}
+                    max={10}
+                    value={editRating}
+                    onChange={(e) => setEditRating(e.target.value)}
+                    className="w-20 rounded-md bg-surface-2 border border-border px-2 py-1.5 text-sm focus:border-accent"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="edit-location" className="block text-xs text-text-muted mb-1">
+                    Placering
+                  </label>
+                  <select
+                    id="edit-location"
+                    value={editLocationId}
+                    onChange={(e) => setEditLocationId(e.target.value)}
+                    className="w-36 rounded-md bg-surface-2 border border-border px-2 py-1.5 text-sm focus:border-accent"
+                  >
+                    <option value="">Ingen</option>
+                    {locations.map((l) => (
+                      <option key={l.id} value={l.id}>
+                        {l.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <button
+                  onClick={handleSaveEdit}
+                  disabled={saving}
+                  className="rounded-md bg-accent text-black px-3 py-2 min-h-11 text-sm font-medium disabled:opacity-50"
                 >
-                  <option value="">Ingen</option>
-                  {locations.map((l) => (
-                    <option key={l.id} value={l.id}>
-                      {l.name}
-                    </option>
-                  ))}
-                </select>
+                  {saving ? 'Sparar...' : 'Spara'}
+                </button>
+                <button
+                  onClick={() => setEditing(false)}
+                  className="rounded-md border border-border px-3 py-2 min-h-11 text-sm"
+                >
+                  Avbryt
+                </button>
               </div>
-              <button
-                onClick={handleSaveEdit}
-                disabled={saving}
-                className="rounded-md bg-accent text-black px-3 py-2 min-h-11 text-sm font-medium disabled:opacity-50"
-              >
-                {saving ? 'Sparar...' : 'Spara'}
-              </button>
-              <button
-                onClick={() => setEditing(false)}
-                className="rounded-md border border-border px-3 py-2 min-h-11 text-sm"
-              >
-                Avbryt
-              </button>
             </div>
           ) : (
             <div className="flex gap-6 mb-3">

@@ -13,10 +13,10 @@ function pickInsertFields(body: Record<string, unknown>) {
 }
 
 // Smalare whitelist för uppdatering – matchar de fält appen faktiskt
-// redigerar (rating/plats vid "Redigera", tmdb/imdb-fält vid TMDB-matchning).
+// redigerar (titel/rating/plats vid "Redigera", tmdb/imdb-fält vid TMDB-matchning).
 function pickUpdateFields(body: Record<string, unknown>) {
-  const { tmdb_id, imdb_id, imdb_rating, my_rating, location_id } = body
-  return { tmdb_id, imdb_id, imdb_rating, my_rating, location_id }
+  const { title, tmdb_id, imdb_id, imdb_rating, my_rating, location_id } = body
+  return { title, tmdb_id, imdb_id, imdb_rating, my_rating, location_id }
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
