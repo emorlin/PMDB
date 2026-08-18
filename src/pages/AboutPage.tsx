@@ -3,7 +3,7 @@ const GITHUB_URL = 'https://github.com/emorlin/PMDB'
 const FEATURES = [
   {
     title: 'Tabellvy',
-    text: 'Hela samlingen i en sorterbar tabell – titel, år, rating, IMDb-betyg, speltid och placering. Sök på titel i realtid, filtrera på "endast osedda", och se antal filmer/osedda i två små statistikrutor.',
+    text: 'Hela samlingen i en sorterbar tabell – titel, år, rating, IMDb-betyg, speltid, placering och tillagd-datum. Sök på titel i realtid, filtrera på "endast osedda", och se antal filmer/osedda/nya sen sist i statistikrutorna.',
   },
   {
     title: 'Upptäck',
@@ -19,7 +19,11 @@ const FEATURES = [
   },
   {
     title: 'Inställningar',
-    text: 'Växla mellan ljust och mörkt tema, samt hantera platserna filmerna står på (kräver inloggning).',
+    text: 'Växla mellan ljust och mörkt tema, exportera hela samlingen till en Excel-fil, samt hantera platserna filmerna står på (kräver inloggning för platshantering, inte för export).',
+  },
+  {
+    title: 'Installerbar app',
+    text: 'Går att lägga till på hemskärmen eller skrivbordet som en egen app. Öppnas snabbt tack vare att sidan cachas lokalt, och en liten ruta visas när en ny version finns att uppdatera till.',
   },
 ]
 

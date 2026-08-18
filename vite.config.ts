@@ -33,6 +33,11 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // xlsx (Excel-export) laddas bara in on-demand via dynamic import när
+        // man klickar på "Exportera till Excel" – ska därför inte precachas
+        // i förväg (det skulle tvinga alla besökare att ladda ner den i
+        // bakgrunden), utan cachas separat nedan först vid faktisk användning.
+        globIgnores: ['**/xlsx-*.js'],
         // Filmerna hämtas direkt från Supabase (inte via /api), så deras
         // domän måste vitlistas explicit för att kunna cachas här.
         runtimeCaching: [
@@ -50,6 +55,14 @@ export default defineConfig({
             options: {
               cacheName: 'tmdb-posters',
               expiration: { maxEntries: 500, maxAgeSeconds: 60 * 60 * 24 * 30 },
+            },
+          },
+          {
+            urlPattern: ({ url }) => url.pathname.includes('/assets/xlsx-'),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'xlsx-lib',
+              expiration: { maxEntries: 2, maxAgeSeconds: 60 * 60 * 24 * 365 },
             },
           },
         ],

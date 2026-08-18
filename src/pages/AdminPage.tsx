@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react'
 import { useAuth, SignedIn } from '@clerk/clerk-react'
 import { useTheme } from '../lib/theme-context'
+import { useMovies } from '../lib/movies-context'
+import { compareMovies } from '../lib/movies'
 import { listLocations, addLocation, updateLocation, deleteLocation } from '../lib/locations'
 import type { Location } from '../types/location'
 
 export default function AdminPage() {
   const { theme, setTheme } = useTheme()
   const { getToken, isSignedIn } = useAuth()
+  const { movies, loading: moviesLoading } = useMovies()
   const [locations, setLocations] = useState<Location[]>([])
   const [newName, setNewName] = useState('')
   const [loading, setLoading] = useState(true)
@@ -15,6 +18,41 @@ export default function AdminPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
   const [renaming, setRenaming] = useState(false)
+  const [exporting, setExporting] = useState(false)
+
+  async function handleExport() {
+    setExporting(true)
+    try {
+      const XLSX = await import('xlsx')
+      const rows = [...movies]
+        .sort((a, b) => compareMovies(a, b, 'title', 'asc'))
+        .map((m) => ({
+          Titel: m.title,
+          År: m.year ?? '',
+          Rating: m.my_rating ?? '',
+          IMDb: m.imdb_rating ?? '',
+          'Tid (min)': m.runtime_minutes ?? '',
+          Placering: m.location?.name ?? '',
+          Tillagd: new Date(m.created_at),
+        }))
+      const ws = XLSX.utils.json_to_sheet(rows)
+      // json_to_sheet ger Date-celler ett amerikanskt default-datumformat
+      // (m/d/yy) – ändra till samma ÅÅÅÅ-MM-DD som resten av appen visar.
+      const tillagdCol = Object.keys(rows[0] ?? {}).indexOf('Tillagd')
+      if (tillagdCol !== -1) {
+        const range = XLSX.utils.decode_range(ws['!ref'] ?? 'A1')
+        for (let r = range.s.r + 1; r <= range.e.r; r++) {
+          const cell = ws[XLSX.utils.encode_cell({ r, c: tillagdCol })]
+          if (cell) cell.z = 'yyyy-mm-dd'
+        }
+      }
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, 'Filmsamling')
+      XLSX.writeFile(wb, 'filmsamling.xlsx')
+    } finally {
+      setExporting(false)
+    }
+  }
 
   async function load() {
     setLoading(true)
@@ -130,6 +168,17 @@ export default function AdminPage() {
             Mörkt
           </button>
         </div>
+      </section>
+
+      <section className="mb-8">
+        <h2 className="text-sm font-medium text-text-muted mb-2">Exportera</h2>
+        <button
+          onClick={handleExport}
+          disabled={exporting || moviesLoading || movies.length === 0}
+          className="rounded-md border border-border px-3 py-2 min-h-11 text-sm hover:bg-surface-2 disabled:opacity-50"
+        >
+          {exporting ? 'Exporterar...' : 'Exportera till Excel'}
+        </button>
       </section>
 
       <SignedIn>

@@ -22,6 +22,7 @@
 - [Projektstruktur](#projektstruktur)
 - [Databasmodell](#databasmodell)
 - [PWA & offline-cachning](#pwa--offline-cachning)
+- [Exportera till Excel](#exportera-till-excel)
 - [Säkerhet](#säkerhet)
 - [Inloggning & behörighet](#inloggning--behörighet)
 - [Responsiv design](#responsiv-design)
@@ -48,12 +49,12 @@ Byggd som ett litet, fokuserat projekt: en användare, en samling, inget cachnin
 
 | Funktion | Beskrivning |
 |---|---|
-| **Tabellvy** | Startsida: Titel, År, Rating, IMDb-rating, Tid, Placering – sorterbara kolumner (klick eller tangentbord). Realtidssökning på titel, "endast osedda"-filter, och två statistikrutor (antal filmer / antal osedda). Blir en kortlista med egen sorteringskontroll under `md`-brytpunkten |
+| **Tabellvy** | Startsida: Titel, År, Rating, IMDb-rating, Tid, Placering, Tillagd – sorterbara kolumner (klick eller tangentbord). Realtidssökning på titel, "endast osedda"-filter, och statistikrutor (antal filmer / antal osedda / nya sen sist). Blir en kortlista med egen sorteringskontroll under `md`-brytpunkten |
 | **Detaljsida** | Poster, handling, skådespelare, regissör och genre hämtas alltid live från TMDB (aldrig cachat i databasen). Egen rating, IMDb-rating och placering visas/redigeras, med redigera- och ta bort-funktion (kräver inloggning) |
 | **Lägg till film** | Sökmodal mot TMDB, autofyller år/speltid/IMDb-rating; plats och egen rating (1–10) fylls i manuellt. Man hamnar direkt på filmens detaljsida efter tillägg. Kräver inloggning |
 | **Matcha mot TMDB i efterhand** | Filmer utan `tmdb_id` (t.ex. CSV-importerade) öppnar automatiskt en sökmodal på detaljsidan så de kan kopplas till TMDB/IMDb senare – utan att röra egen rating eller plats. Kräver inloggning |
 | **Upptäck-vy** | Rutnät av den egna samlingen (inte nya filmer att köpa): bokstavsfilter (horisontell A–Ö-rad på desktop, dropdown på mobil), "endast osedda"-filter, slumpknapp, klassisk sidpaginering (48/sida). Bokstav och sidnummer ligger i URL:en (`?letter=B&page=2`) – delbart och webbläsarhistorik fungerar |
-| **Inställningar** | Ljust/mörkt tema (sparas i `localStorage`, synligt för alla). Platshanteringen – lägg till, byta namn, ta bort (blockeras om platsen används av en film) – är helt dold tills man loggar in, inte bara knapparna |
+| **Inställningar** | Ljust/mörkt tema (sparas i `localStorage`, synligt för alla). Export av hela samlingen till en `.xlsx`-fil, öppet för alla. Platshanteringen – lägg till, byta namn, ta bort (blockeras om platsen används av en film) – är helt dold tills man loggar in, inte bara knapparna |
 | **Om** | Kort, användarvänlig info om appen och dess funktioner, med länk till källkoden på GitHub |
 | **Inloggning** | Google-inloggning (via Clerk) krävs för att lägga till, redigera, matcha eller ta bort filmer, samt hantera platser. Bläddra, söka och filtrera är öppet för alla – se [eget avsnitt](#inloggning--behörighet) |
 | **Tillgänglighet** | WCAG 2.1 AA: tangentbordsnavigerbar sorterbar tabell, dialog-semantik + fokusfälla i modaler, skip-länk, live-regioner, kontrollerad färgkontrast – se [eget avsnitt](#tillgänglighet) |
@@ -76,6 +77,7 @@ Byggd som ett litet, fokuserat projekt: en användare, en samling, inget cachnin
 | @vercel/node | 5 | Typer för Vercel Functions (`api/*.ts`) |
 | oxlint | 1 | Rust-baserad linter, snabbare alternativ till ESLint |
 | vite-plugin-pwa | 1 | Genererar web app manifest + service worker (Workbox) för installerbarhet och offline-cachning |
+| xlsx (SheetJS) | 0.18 | Genererar `.xlsx`-filen för Excel-export, lazy-loadad – se [Exportera till Excel](#exportera-till-excel) |
 | Vercel | – | Statisk hosting + serverless-funktioner för API-proxyn |
 
 Ingen tredjeparts server-state-cache (t.ex. React Query) används – filmlistan cachas istället för hand i en enkel React Context (`MoviesProvider`, se [Arkitektur](#arkitektur)). TMDB-metadata (poster, handling osv.) cachas fortfarande aldrig – bara den egna samlingens grunddata (titel, rating, plats …) från Supabase.
@@ -124,6 +126,12 @@ Ingen tredjeparts server-state-cache (t.ex. React Query) används – filmlistan
 - Lägg till/redigera/matcha/ta bort uppdaterar cachen direkt (`addMovieToCache`/`updateMovieInCache`/`removeMovieFromCache`) istället för att trigga en ny hämtning av hela listan.
 
 Innan detta hämtade Tabell- och Upptäck-vyn hela samlingen (1000+ rader) oberoende av varandra vid varje montering – dvs. varje flikbyte – och tabellvyn hämtade dessutom om från databasen vid varje ändrad sorteringskolumn.
+
+### "Nya sen sist"
+
+Tabellvyn visar en statistikruta med antal filmer tillagda sedan besökarens senaste besök – synlig för alla, utloggad som inloggad, eftersom den bara läser redan öppen data.
+
+Ingen databas eller cookie inblandad: `MovieTablePage.tsx` sparar tidpunkten för besöket i `localStorage` (`pmdb-last-visit`) och jämför den mot varje films `created_at` nästa gång tabellvyn visas. Rent klientbaserat och per webbläsare/enhet – synkas inte mellan enheter eller kopplas till Clerk-kontot. Rutan döljs helt när antalet är 0 (t.ex. första besöket, eller inga filmer tillagda sedan sist).
 
 ---
 
@@ -244,6 +252,18 @@ Appen går att installera som en Progressive Web App – "Lägg till på hemskä
 **Känt fallgrop:** en genväg som redan lagts till på hemskärmen/skrivbordet *innan* manifestet fanns är bara en vanlig bokmärkes-genväg, inte en riktig installerad PWA. Efter en deploy med detta måste den tas bort och läggas till på nytt för att webbläsaren ska upptäcka manifestet och installera appen på riktigt (med ikon, precache och allt).
 
 Service workern byggs bara i produktionsbygget (`npm run build`) – `vite`/`vercel dev` kör utan den, så den lokala utvecklingsupplevelsen är opåverkad.
+
+---
+
+## Exportera till Excel
+
+Under **Inställningar** kan hela samlingen exporteras som en `.xlsx`-fil (Titel, År, Rating, IMDb, Tid, Placering, Tillagd), sorterad på titel. Öppet för alla besökare – precis som resten av bläddringen kräver export ingen inloggning, eftersom det bara är en klientsidig omformatering av redan publik data, ingen skrivning.
+
+- **Lazy-loadat.** `xlsx` (SheetJS) är ett relativt tungt bibliotek (~425 kB) som bara importeras via `await import('xlsx')` när exportknappen faktiskt klickas, istället för att ligga i huvudbundlen och göra appens vanliga första-laddning tyngre för alla.
+- **Uteslutet ur PWA-precachen** – utan åtgärd hade service workern (se [PWA & offline-cachning](#pwa--offline-cachning)) ändå laddat ner och sparat undan xlsx-chunken i bakgrunden vid varje förstabesök, oavsett om någon någonsin klickar på exportknappen. `workbox.globIgnores: ['**/xlsx-*.js']` i `vite.config.ts` utesluter den ur precachen; en separat `runtimeCaching`-regel (cache-first) cachar den istället först vid faktisk användning, så efterföljande exporter är snabba utan att första sidladdningen blir tyngre.
+- **Datumformat** – `json_to_sheet` ger datumkolumner ett amerikanskt standardformat (`m/d/yy`); cellernas nummerformat sätts uttryckligen till `yyyy-mm-dd` i efterhand så det matchar `ÅÅÅÅ-MM-DD` som resten av appen använder.
+
+**Känd sårbarhet, bedömt lågrisk:** `xlsx`-paketet har två kända säkerhetsvarningar (prototype pollution, ReDoS) utan tillgänglig fix på npm-registrets version. Båda gäller `XLSX.read`/`readFile` – parsning av en fil från en opålitrig källa. Den här appen använder bara `json_to_sheet`/`writeFile` för att *skriva* en fil från sin egen redan betrodda data; ingen användarinmatning eller uppladdad fil parsas någonsin med biblioteket.
 
 ---
 
@@ -525,6 +545,8 @@ Ljust/mörkt läge styrs av klassen `.dark` på `<html>`, satt via `ThemeProvide
 - Importerade filmer (via CSV) saknar `tmdb_id`/`imdb_id` tills de matchas manuellt via **"Matcha mot TMDB"** på respektive detaljsida – ingen bulk-matchning finns ännu.
 - Inga automatiska tester ännu.
 - En hemskärms-/skrivbordsgenväg som lades till innan PWA-manifestet infördes räknas inte som en riktig installation – se [PWA & offline-cachning](#pwa--offline-cachning).
+- "Nya sen sist"-räknaren är enhet-/webbläsarspecifik (`localStorage`), inte kopplad till Clerk-kontot – samma person ser olika räkning på olika enheter.
+- `xlsx`-paketet (Excel-export) har två kända säkerhetsvarningar utan tillgänglig fix – bedömda som ofarliga för hur biblioteket faktiskt används här, se [Exportera till Excel](#exportera-till-excel).
 
 ---
 

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { SignedIn, ClerkLoading, ClerkLoaded } from '@clerk/clerk-react'
 import MovieTable from '../components/MovieTable'
@@ -8,6 +8,8 @@ import { compareMovies } from '../lib/movies'
 import { useMovies } from '../lib/movies-context'
 import type { SortColumn, SortDirection } from '../types/movie'
 
+const LAST_VISIT_KEY = 'pmdb-last-visit'
+
 export default function MovieTablePage() {
   const navigate = useNavigate()
   const { movies, loading, error, addMovieToCache } = useMovies()
@@ -16,6 +18,19 @@ export default function MovieTablePage() {
   const [showAdd, setShowAdd] = useState(false)
   const [query, setQuery] = useState('')
   const [onlyUnseen, setOnlyUnseen] = useState(false)
+  const [newSinceLastVisit, setNewSinceLastVisit] = useState(0)
+
+  useEffect(() => {
+    if (loading) return
+    const lastVisit = localStorage.getItem(LAST_VISIT_KEY)
+    if (lastVisit) {
+      setNewSinceLastVisit(movies.filter((m) => m.created_at > lastVisit).length)
+    }
+    localStorage.setItem(LAST_VISIT_KEY, new Date().toISOString())
+    // Ska bara räknas om vid montering (dvs. varje gång man kommer till startvyn),
+    // inte varje gång filmlistan i cachen förändras under tiden man redan är kvar här.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading])
 
   function handleSort(col: SortColumn) {
     if (col === sort) {
@@ -69,6 +84,12 @@ export default function MovieTablePage() {
           <div className="text-xs text-text-muted">Osedda</div>
           <div className="text-lg font-medium">{unseenCount}</div>
         </div>
+        {newSinceLastVisit > 0 && (
+          <div className="rounded-md bg-surface-2 border border-border px-4 py-2">
+            <div className="text-xs text-text-muted">Nya sen sist</div>
+            <div className="text-lg font-medium">{newSinceLastVisit}</div>
+          </div>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-3 mb-1">
