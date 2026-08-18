@@ -15,5 +15,12 @@ export interface Movie {
 
 export type MovieInsert = Omit<Movie, 'id' | 'user_id' | 'created_at' | 'location'>
 
-export type SortColumn = 'title' | 'year' | 'my_rating' | 'imdb_rating' | 'runtime_minutes' | 'location'
+export type SortColumn =
+  | 'title'
+  | 'year'
+  | 'my_rating'
+  | 'imdb_rating'
+  | 'runtime_minutes'
+  | 'location'
+  | 'created_at'
 export type SortDirection = 'asc' | 'desc'

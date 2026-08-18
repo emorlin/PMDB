@@ -16,6 +16,7 @@ const columns: { key: SortColumn; label: string }[] = [
   { key: 'imdb_rating', label: 'IMDb' },
   { key: 'runtime_minutes', label: 'Tid' },
   { key: 'location', label: 'Placering' },
+  { key: 'created_at', label: 'Tillagd' },
 ]
 
 function formatRuntime(min: number | null) {
@@ -23,6 +24,10 @@ function formatRuntime(min: number | null) {
   const h = Math.floor(min / 60)
   const m = min % 60
   return `${h}h ${m.toString().padStart(2, '0')}min`
+}
+
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString('sv-SE')
 }
 
 function ariaSortFor(col: SortColumn, sort: SortColumn, dir: SortDirection): 'ascending' | 'descending' | 'none' {
@@ -87,6 +92,7 @@ export default function MovieTable({
                 <td className="px-3 py-2">{m.imdb_rating ?? '–'}</td>
                 <td className="px-3 py-2">{formatRuntime(m.runtime_minutes)}</td>
                 <td className="px-3 py-2">{m.location?.name ?? '–'}</td>
+                <td className="px-3 py-2">{formatDate(m.created_at)}</td>
               </tr>
             ))}
             {movies.length === 0 && (
@@ -145,6 +151,7 @@ export default function MovieTable({
                   <span className="text-xs text-text-muted">
                     Rating: {m.my_rating ?? '–'} · IMDb: {m.imdb_rating ?? '–'}
                   </span>
+                  <span className="text-xs text-text-muted">Tillagd: {formatDate(m.created_at)}</span>
                 </Link>
               </li>
             ))}
