@@ -116,7 +116,7 @@ export default function MovieTable({
             id="mobile-sort-column"
             value={sort}
             onChange={(e) => onSort(e.target.value as SortColumn)}
-            className="flex-1 rounded-md bg-surface-2 border border-border px-2 py-2 text-sm"
+            className="flex-1 rounded-md bg-surface-2 border border-border px-2 py-2 text-base"
           >
             {columns.map((c) => (
               <option key={c.key} value={c.key}>

@@ -103,7 +103,7 @@ export default function MovieTablePage() {
             placeholder="Sök på titel..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="w-full rounded-md bg-surface-2 border border-border px-3 py-2 text-sm focus:border-accent"
+            className="w-full rounded-md bg-surface-2 border border-border px-3 py-2 text-base focus:border-accent"
           />
         </div>
         <label className="flex items-center gap-2 text-sm min-h-11 whitespace-nowrap">

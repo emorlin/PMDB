@@ -38,7 +38,7 @@ export default function TmdbSearchBox({
             placeholder="Sök filmtitel..."
             value={query}
             onChange={(e) => onQueryChange(e.target.value)}
-            className="w-full rounded-md bg-surface-2 border border-border px-3 py-2 text-sm focus:border-accent"
+            className="w-full rounded-md bg-surface-2 border border-border px-3 py-2 text-base focus:border-accent"
           />
         </div>
         <div className="w-20">
@@ -53,7 +53,7 @@ export default function TmdbSearchBox({
             maxLength={4}
             value={year}
             onChange={(e) => onYearChange(e.target.value.replace(/\D/g, ''))}
-            className="w-full rounded-md bg-surface-2 border border-border px-2 py-2 text-sm focus:border-accent"
+            className="w-full rounded-md bg-surface-2 border border-border px-2 py-2 text-base focus:border-accent"
           />
         </div>
       </div>

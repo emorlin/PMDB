@@ -50,7 +50,7 @@ export default function AlphabetFilter({ active, onSelect, disabled }: Props) {
         disabled={disabled}
         value={active ?? ''}
         onChange={(e) => onSelect(e.target.value || null)}
-        className="md:hidden mb-3 w-full rounded-md bg-surface-2 border border-border px-2 py-2 text-sm disabled:opacity-40"
+        className="md:hidden mb-3 w-full rounded-md bg-surface-2 border border-border px-2 py-2 text-base disabled:opacity-40"
       >
         <option value="">Alla bokstäver</option>
         {LETTERS.map((l) => (

@@ -201,7 +201,7 @@ export default function MovieDetailPage() {
                   type="text"
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
-                  className="w-full max-w-sm rounded-md bg-surface-2 border border-border px-2 py-1.5 text-sm focus:border-accent"
+                  className="w-full max-w-sm rounded-md bg-surface-2 border border-border px-2 py-1.5 text-base focus:border-accent"
                 />
               </div>
               <div className="flex flex-wrap gap-3 items-end">
@@ -217,7 +217,7 @@ export default function MovieDetailPage() {
                     max={10}
                     value={editRating}
                     onChange={(e) => setEditRating(e.target.value)}
-                    className="w-20 rounded-md bg-surface-2 border border-border px-2 py-1.5 text-sm focus:border-accent"
+                    className="w-20 rounded-md bg-surface-2 border border-border px-2 py-1.5 text-base focus:border-accent"
                   />
                 </div>
                 <div>
@@ -228,7 +228,7 @@ export default function MovieDetailPage() {
                     id="edit-location"
                     value={editLocationId}
                     onChange={(e) => setEditLocationId(e.target.value)}
-                    className="w-36 rounded-md bg-surface-2 border border-border px-2 py-1.5 text-sm focus:border-accent"
+                    className="w-36 rounded-md bg-surface-2 border border-border px-2 py-1.5 text-base focus:border-accent"
                   >
                     <option value="">Ingen</option>
                     {locations.map((l) => (

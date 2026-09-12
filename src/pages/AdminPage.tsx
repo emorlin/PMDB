@@ -216,7 +216,7 @@ export default function AdminPage() {
                         autoFocus
                         value={editName}
                         onChange={(e) => setEditName(e.target.value)}
-                        className="flex-1 rounded-md bg-surface-2 border border-border px-2 py-1.5 text-sm focus:border-accent"
+                        className="flex-1 rounded-md bg-surface-2 border border-border px-2 py-1.5 text-base focus:border-accent"
                       />
                       <button
                         type="submit"
@@ -276,7 +276,7 @@ export default function AdminPage() {
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
-              className="flex-1 rounded-md bg-surface-2 border border-border px-2 py-2 text-sm focus:border-accent"
+              className="flex-1 rounded-md bg-surface-2 border border-border px-2 py-2 text-base focus:border-accent"
             />
             <button
               onClick={handleAdd}

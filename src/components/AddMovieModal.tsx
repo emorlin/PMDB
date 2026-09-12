@@ -220,7 +220,7 @@ export default function AddMovieModal({ onClose, onAdded }: Props) {
                   id="movie-location"
                   value={locationId}
                   onChange={(e) => setLocationId(e.target.value)}
-                  className="w-full rounded-md bg-surface-2 border border-border px-2 py-1.5 text-sm focus:border-accent"
+                  className="w-full rounded-md bg-surface-2 border border-border px-2 py-1.5 text-base focus:border-accent"
                 >
                   <option value="">Välj plats...</option>
                   {locations.map((l) => (
@@ -243,7 +243,7 @@ export default function AddMovieModal({ onClose, onAdded }: Props) {
                   placeholder="Din rating (1-10)"
                   value={myRating}
                   onChange={(e) => setMyRating(e.target.value)}
-                  className="w-full rounded-md bg-surface-2 border border-border px-2 py-1.5 text-sm focus:border-accent"
+                  className="w-full rounded-md bg-surface-2 border border-border px-2 py-1.5 text-base focus:border-accent"
                 />
               </div>
             </div>
