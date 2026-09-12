@@ -9,12 +9,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.status(200).json({ results: [] })
     return
   }
+  const year = typeof req.query.year === 'string' ? req.query.year : ''
 
   const url = new URL('https://api.themoviedb.org/3/search/movie')
   url.searchParams.set('api_key', process.env.TMDB_API_KEY ?? '')
   url.searchParams.set('language', 'sv-SE')
   url.searchParams.set('include_adult', 'false')
   url.searchParams.set('query', query)
+  if (/^\d{4}$/.test(year)) {
+    url.searchParams.set('primary_release_year', year)
+  }
 
   const tmdbRes = await fetch(url.toString())
   const data = await tmdbRes.json()

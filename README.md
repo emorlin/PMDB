@@ -51,8 +51,8 @@ Byggd som ett litet, fokuserat projekt: en användare, en samling, inget cachnin
 |---|---|
 | **Tabellvy** | Startsida: Titel, År, Rating, IMDb-rating, Tid, Placering, Tillagd – sorterbara kolumner (klick eller tangentbord). Realtidssökning på titel, "endast osedda"-filter, och statistikrutor (antal filmer / antal osedda / nya sen sist). Blir en kortlista med egen sorteringskontroll under `md`-brytpunkten |
 | **Detaljsida** | Poster, handling, skådespelare, regissör och genre hämtas alltid live från TMDB (aldrig cachat i databasen). Egen rating, IMDb-rating och placering visas/redigeras, med redigera- och ta bort-funktion (kräver inloggning) |
-| **Lägg till film** | Sökmodal mot TMDB, autofyller år/speltid/IMDb-rating; plats och egen rating (1–10) fylls i manuellt. Man hamnar direkt på filmens detaljsida efter tillägg. Kräver inloggning |
-| **Matcha mot TMDB i efterhand** | Filmer utan `tmdb_id` (t.ex. CSV-importerade) öppnar automatiskt en sökmodal på detaljsidan så de kan kopplas till TMDB/IMDb senare – utan att röra egen rating eller plats. Kräver inloggning |
+| **Lägg till film** | Sökmodal mot TMDB, autofyller år/speltid/IMDb-rating; plats och egen rating (1–10) fylls i manuellt. Ett valfritt årtal-fält smalnar ner TMDB-sökningen (`primary_release_year`) – användbart för vanliga titlar med tusentals träffar. Man hamnar direkt på filmens detaljsida efter tillägg. Kräver inloggning |
+| **Matcha mot TMDB i efterhand** | Filmer utan `tmdb_id` (t.ex. CSV-importerade) öppnar automatiskt en sökmodal på detaljsidan så de kan kopplas till TMDB/IMDb senare – utan att röra egen rating eller plats. Samma årtal-filter som ovan, förifyllt med filmens egna år om det finns. Kräver inloggning |
 | **Upptäck-vy** | Rutnät av den egna samlingen (inte nya filmer att köpa): bokstavsfilter (horisontell A–Ö-rad på desktop, dropdown på mobil), "endast osedda"-filter, slumpknapp, klassisk sidpaginering (48/sida). Bokstav och sidnummer ligger i URL:en (`?letter=B&page=2`) – delbart och webbläsarhistorik fungerar |
 | **Inställningar** | Ljust/mörkt tema (sparas i `localStorage`, synligt för alla). Export av hela samlingen till en `.xlsx`-fil, öppet för alla. Platshanteringen – lägg till, byta namn, ta bort (blockeras om platsen används av en film) – är helt dold tills man loggar in, inte bara knapparna |
 | **Om** | Kort, användarvänlig info om appen och dess funktioner, med länk till källkoden på GitHub |
@@ -105,7 +105,7 @@ Ingen tredjeparts server-state-cache (t.ex. React Query) används – filmlistan
 
 **Dataflöde när en film läggs till:**
 
-1. Sökfältet i `AddMovieModal` anropar `GET /api/tmdb-search` via proxyn (klienten ser aldrig `TMDB_API_KEY`)
+1. Sökfältet i `AddMovieModal` anropar `GET /api/tmdb-search` via proxyn (klienten ser aldrig `TMDB_API_KEY`), valfritt med ett `year`-query-param som proxyn validerar (`/^\d{4}$/`) och vidarebefordrar som TMDB:s `primary_release_year`
 2. Vald träff hämtar fulla detaljer via `/api/tmdb-movie` samt IMDb-betyg via `/api/omdb-rating`
 3. `addMovie()` hämtar en Clerk-token (`useAuth().getToken()`) och skickar den som `Authorization: Bearer …` till `POST /api/movies`, som verifierar sessionen och skriver raden till `pmdb.movies`
 4. Appen navigerar direkt till filmens detaljsida (`/movie/:id`)
@@ -145,7 +145,7 @@ PMDB/
 │   │   ├── clerkAuth.ts             # Verifierar Clerk-token (requireClerkAuth)
 │   │   ├── supabase.ts              # Server-side Supabase-klient för movies.ts/locations.ts
 │   │   └── parseBody.ts             # Defensiv JSON-body-parsing, delad av movies.ts/locations.ts
-│   ├── tmdb-search.ts               # Proxy: TMDB-sökning
+│   ├── tmdb-search.ts               # Proxy: TMDB-sökning, stödjer valfritt år (primary_release_year)
 │   ├── tmdb-movie.ts                # Proxy: filmdetaljer + credits/external_ids
 │   ├── omdb-rating.ts               # Proxy: IMDb-rating via OMDb
 │   ├── movies.ts                    # Skyddad: POST/PATCH/DELETE mot pmdb.movies, fält-whitelistat
@@ -159,12 +159,15 @@ PMDB/
 │   ├── components/
 │   │   ├── AddMovieModal.tsx        # Sök + lägg till ny film (dialog, fokusfälla)
 │   │   ├── MatchMovieModal.tsx      # Matcha en befintlig film mot TMDB i efterhand
+│   │   ├── TmdbSearchBox.tsx        # Delad sök+år-fält + resultatlista, används av båda modalerna ovan
 │   │   ├── AppLayout.tsx            # Header, nav, inloggningsknapp, footer, <Outlet />
 │   │   ├── MovieTable.tsx           # Sorterbar tabell (desktop) / kortlista (mobil)
 │   │   ├── MovieTableSkeleton.tsx   # Platshållare medan filmlistan laddas (undviker layouthopp)
 │   │   ├── AlphabetFilter.tsx       # A–Ö-filter: horisontell rad (desktop) / dropdown (mobil)
 │   │   ├── PosterGrid.tsx           # Responsivt postergrid för Upptäck-vyn
 │   │   └── PwaUpdatePrompt.tsx      # "Ny version tillgänglig"-ruta, se PWA & offline-cachning
+│   ├── hooks/
+│   │   └── useTmdbSearch.ts         # Debounce (300ms) + TMDB-sökning, delad av båda sökmodalerna
 │   ├── pages/
 │   │   ├── MovieTablePage.tsx       # "/" – tabellvy, sök, statistik, lägg till film
 │   │   ├── DiscoverPage.tsx         # "/discover" – upptäck egen samling (bokstav/sida i URL:en)

@@ -11,11 +11,11 @@ const FEATURES = [
   },
   {
     title: 'Lägg till film',
-    text: 'Sök upp filmen på TMDB – år, speltid och IMDb-betyg fylls i automatiskt. Du väljer bara plats och din egen rating. Kräver inloggning.',
+    text: 'Sök upp filmen på TMDB – år, speltid och IMDb-betyg fylls i automatiskt. Många titlar ger tusentals träffar, så skriv gärna in filmens år bredvid sökrutan för att smalna ner listan. Du väljer bara plats och din egen rating. Kräver inloggning.',
   },
   {
     title: 'Matcha mot TMDB',
-    text: 'Äldre filmer som saknar TMDB-koppling går att matcha i efterhand direkt från filmens sida, så poster och handling dyker upp. Kräver inloggning.',
+    text: 'Äldre filmer som saknar TMDB-koppling går att matcha i efterhand direkt från filmens sida, så poster och handling dyker upp. Samma årtal-fält som vid tillägg hjälper till att hitta rätt bland vanliga titlar. Kräver inloggning.',
   },
   {
     title: 'Inställningar',

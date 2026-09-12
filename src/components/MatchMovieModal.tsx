@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '@clerk/clerk-react'
-import { searchMovies, getMovieDetails, posterUrl, type TmdbSearchResult } from '../lib/tmdb'
+import { getMovieDetails, type TmdbSearchResult } from '../lib/tmdb'
 import { getImdbRating } from '../lib/omdb'
 import { updateMovie } from '../lib/movies'
+import { useTmdbSearch } from '../hooks/useTmdbSearch'
+import TmdbSearchBox from './TmdbSearchBox'
 import type { Movie } from '../types/movie'
 
 interface Props {
@@ -26,8 +28,7 @@ const FOCUSABLE_SELECTOR =
 export default function MatchMovieModal({ movie, onClose, onMatched }: Props) {
   const { getToken } = useAuth()
   const [query, setQuery] = useState(movie.title)
-  const [results, setResults] = useState<TmdbSearchResult[]>([])
-  const [loadingResults, setLoadingResults] = useState(false)
+  const [year, setYear] = useState(movie.year ? String(movie.year) : '')
   const [selected, setSelected] = useState<Selected | null>(null)
   const [loadingDetails, setLoadingDetails] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -36,24 +37,7 @@ export default function MatchMovieModal({ movie, onClose, onMatched }: Props) {
   const panelRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => {
-    if (selected || !query.trim()) {
-      setResults([])
-      return
-    }
-    const t = setTimeout(async () => {
-      setLoadingResults(true)
-      try {
-        const r = await searchMovies(query)
-        setResults(r.slice(0, 8))
-      } catch (e) {
-        setError((e as Error).message)
-      } finally {
-        setLoadingResults(false)
-      }
-    }, 300)
-    return () => clearTimeout(t)
-  }, [query, selected])
+  const { results, loading: loadingResults, setResults } = useTmdbSearch(query, year, !selected, setError)
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow
@@ -174,55 +158,17 @@ export default function MatchMovieModal({ movie, onClose, onMatched }: Props) {
         </p>
 
         {!selected && (
-          <>
-            <label htmlFor="match-search" className="sr-only">
-              Sök filmtitel
-            </label>
-            <input
-              ref={searchInputRef}
-              id="match-search"
-              type="text"
-              placeholder="Sök filmtitel..."
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              className="w-full rounded-md bg-surface-2 border border-border px-3 py-2 text-sm focus:border-accent"
-            />
-            <div aria-live="polite">
-              {(loadingResults || results.length > 0) && (
-                <ul className="mt-1 border border-border rounded-md overflow-hidden max-h-64 overflow-y-auto">
-                  {loadingResults && (
-                    <li role="status" className="px-3 py-2 text-xs text-text-muted">
-                      Söker...
-                    </li>
-                  )}
-                  {results.map((r) => (
-                    <li key={r.id} className="border-b border-border last:border-b-0">
-                      <button
-                        onClick={() => pickResult(r)}
-                        className="w-full flex items-center gap-3 px-3 py-2 text-left text-sm hover:bg-surface-2"
-                      >
-                        <span className="w-8 h-11 shrink-0 bg-surface-2 rounded overflow-hidden block">
-                          {posterUrl(r.poster_path, 'w92') && (
-                            <img
-                              src={posterUrl(r.poster_path, 'w92')!}
-                              alt=""
-                              className="w-full h-full object-cover"
-                            />
-                          )}
-                        </span>
-                        <span>
-                          <span className="font-medium block">{r.title}</span>
-                          <span className="text-xs text-text-muted block">
-                            {r.release_date ? r.release_date.slice(0, 4) : 'Okänt år'}
-                          </span>
-                        </span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </>
+          <TmdbSearchBox
+            idPrefix="match"
+            query={query}
+            onQueryChange={setQuery}
+            year={year}
+            onYearChange={setYear}
+            results={results}
+            loading={loadingResults}
+            onPick={pickResult}
+            searchInputRef={searchInputRef}
+          />
         )}
 
         {loadingDetails && (

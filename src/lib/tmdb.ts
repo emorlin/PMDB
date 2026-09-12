@@ -12,9 +12,10 @@ export interface TmdbSearchResult {
   poster_path: string | null
 }
 
-export async function searchMovies(query: string): Promise<TmdbSearchResult[]> {
+export async function searchMovies(query: string, year?: string): Promise<TmdbSearchResult[]> {
   if (!query.trim()) return []
-  const url = `/api/tmdb-search?query=${encodeURIComponent(query)}`
+  let url = `/api/tmdb-search?query=${encodeURIComponent(query)}`
+  if (year?.trim()) url += `&year=${encodeURIComponent(year.trim())}`
   const res = await fetch(url, { headers: proxyHeaders() })
   if (!res.ok) throw new Error('TMDB-sökning misslyckades')
   const data = await res.json()
