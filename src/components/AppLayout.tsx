@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react'
 import { NavLink, Link, Outlet, useLocation } from 'react-router-dom'
 import { SignedIn, SignedOut, SignInButton, UserButton, ClerkLoading, ClerkLoaded } from '@clerk/clerk-react'
 import { useTheme } from '../lib/theme-context'
+import { useJubilee } from '../lib/jubilee-context'
 import PwaUpdatePrompt from './PwaUpdatePrompt'
+import JubileeConfetti from './JubileeConfetti'
 
 const GITHUB_URL = 'https://github.com/emorlin/PMDB'
 
@@ -23,6 +25,7 @@ const mobileLinkClass = (props: { isActive: boolean }) => `${linkClass(props)} w
 
 export default function AppLayout() {
   const { theme } = useTheme()
+  const { triggerJubilee } = useJubilee()
   const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
 
@@ -157,11 +160,26 @@ export default function AppLayout() {
               GitHub
               <span className="sr-only"> (öppnas i ny flik)</span>
             </a>
-            <p className="text-xs text-text-muted">© {year} Mathias Filmsamling</p>
+            <p className="text-xs text-text-muted">
+              © {year}{' '}
+              {/* Dold manuell testtrigger för 31 januari-firandet (konfetti + rubrikbyte) –
+                  beter sig som den riktiga dagen för resten av besöket, men rör aldrig
+                  localStorage, så den går att klicka hur många gånger som helst. Ska se ut
+                  och bete sig exakt som vanlig text, inte som en knapp. */}
+              <button
+                type="button"
+                onClick={triggerJubilee}
+                className="bg-transparent border-0 p-0 m-0 text-inherit cursor-text"
+              >
+                Mathias
+              </button>{' '}
+              Filmsamling
+            </p>
           </div>
         </div>
       </footer>
       <PwaUpdatePrompt />
+      <JubileeConfetti />
     </div>
   )
 }

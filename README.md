@@ -60,6 +60,7 @@ Byggd som ett litet, fokuserat projekt: en användare, en samling, inget cachnin
 | **Inloggning** | Google-inloggning (via Clerk) krävs för att lägga till, redigera, matcha eller ta bort filmer, samt hantera platser. Bläddra, söka och filtrera är öppet för alla – se [eget avsnitt](#inloggning--behörighet) |
 | **Tillgänglighet** | WCAG 2.1 AA: tangentbordsnavigerbar sorterbar tabell, dialog-semantik + fokusfälla i modaler, skip-länk, live-regioner, kontrollerad färgkontrast – se [eget avsnitt](#tillgänglighet) |
 | **Installerbar app (PWA)** | Går att lägga till på hemskärm/skrivbord med egen ikon. App-skalet precachas av en service worker och öppnas därför i princip direkt, utan att vänta på nätverket – se [PWA & offline-cachning](#pwa--offline-cachning) |
+| **Jubileumskonfetti** | Inloggade besökare får ett konfettiregn (`react-rewards`) varje besök den 31 januari, och rubriken på Tabellvyn byts samtidigt ut till "Grattis på födelsedagen Mathias". Missas dagen helt visas båda istället en gång vid nästa inloggade besök, sen inte igen förrän nästa års 31 januari – spåras i `localStorage` (`pmdb-confetti-year`), inte per Clerk-användare. Första körningen någonsin (direkt efter driftsättning, oavsett datum) räknas inte som missad, så ingenting visas förrän en faktisk 31 januari inträffar |
 
 ---
 
@@ -79,6 +80,7 @@ Byggd som ett litet, fokuserat projekt: en användare, en samling, inget cachnin
 | oxlint | 1 | Rust-baserad linter, snabbare alternativ till ESLint |
 | vite-plugin-pwa | 1 | Genererar web app manifest + service worker (Workbox) för installerbarhet och offline-cachning |
 | xlsx (SheetJS) | 0.18 | Genererar `.xlsx`-filen för Excel-export, lazy-loadad – se [Exportera till Excel](#exportera-till-excel) |
+| react-rewards | 3 | Konfettianimation för inloggade besökare 31 januari varje år – se `JubileeConfetti.tsx` |
 | Vercel | – | Statisk hosting + serverless-funktioner för API-proxyn |
 
 Ingen tredjeparts server-state-cache (t.ex. React Query) används – filmlistan cachas istället för hand i en enkel React Context (`MoviesProvider`, se [Arkitektur](#arkitektur)). TMDB-metadata (poster, handling osv.) cachas fortfarande aldrig – bara den egna samlingens grunddata (titel, rating, plats …) från Supabase.
@@ -166,7 +168,8 @@ PMDB/
 │   │   ├── MovieTableSkeleton.tsx   # Platshållare medan filmlistan laddas (undviker layouthopp)
 │   │   ├── AlphabetFilter.tsx       # A–Ö-filter: horisontell rad (desktop) / dropdown (mobil)
 │   │   ├── PosterGrid.tsx           # Responsivt postergrid, delat av Upptäck- och Önskelista-vyn
-│   │   └── PwaUpdatePrompt.tsx      # "Ny version tillgänglig"-ruta, se PWA & offline-cachning
+│   │   ├── PwaUpdatePrompt.tsx      # "Ny version tillgänglig"-ruta, se PWA & offline-cachning
+│   │   └── JubileeConfetti.tsx      # Konfetti 31 januari, läser isJubilee från lib/jubilee-context.tsx
 │   ├── hooks/
 │   │   └── useTmdbSearch.ts         # Debounce (300ms) + TMDB-sökning, delad av båda sökmodalerna
 │   ├── pages/
@@ -184,7 +187,9 @@ PMDB/
 │   │   ├── tmdb.ts                  # Klientsidans wrapper mot /api/tmdb-*
 │   │   ├── omdb.ts                  # Klientsidans wrapper mot /api/omdb-rating
 │   │   ├── proxy.ts                 # Delad hemlighet-header till /api/tmdb-*/omdb-rating
-│   │   └── theme-context.tsx        # Ljust/mörkt tema, localStorage-persistens
+│   │   ├── theme-context.tsx        # Ljust/mörkt tema, localStorage-persistens
+│   │   ├── confetti.ts              # Ren datumlogik: ska 31 januari-firandet visas idag? (testbar utan React/DOM)
+│   │   └── jubilee-context.tsx      # JubileeProvider/useJubilee – avgör en gång per besök, delat av rubrik + konfetti
 │   ├── types/
 │   │   ├── movie.ts
 │   │   └── location.ts

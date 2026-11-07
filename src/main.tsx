@@ -6,6 +6,7 @@ import './index.css'
 import App from './App.tsx'
 import { ThemeProvider } from './lib/theme-context.tsx'
 import { MoviesProvider } from './lib/movies-context.tsx'
+import { JubileeProvider } from './lib/jubilee-context.tsx'
 
 const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
 
@@ -18,13 +19,15 @@ if (!clerkPublishableKey) {
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ClerkProvider publishableKey={clerkPublishableKey ?? ''}>
-      <ThemeProvider>
-        <MoviesProvider>
-          <BrowserRouter>
-            <App />
-          </BrowserRouter>
-        </MoviesProvider>
-      </ThemeProvider>
+      <JubileeProvider>
+        <ThemeProvider>
+          <MoviesProvider>
+            <BrowserRouter>
+              <App />
+            </BrowserRouter>
+          </MoviesProvider>
+        </ThemeProvider>
+      </JubileeProvider>
     </ClerkProvider>
   </StrictMode>,
 )

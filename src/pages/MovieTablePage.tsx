@@ -6,12 +6,14 @@ import MovieTableSkeleton from '../components/MovieTableSkeleton'
 import AddMovieModal from '../components/AddMovieModal'
 import { compareMovies, isWishlistMovie } from '../lib/movies'
 import { useMovies } from '../lib/movies-context'
+import { useJubilee } from '../lib/jubilee-context'
 import type { SortColumn, SortDirection } from '../types/movie'
 
 const LAST_VISIT_KEY = 'pmdb-last-visit'
 
 export default function MovieTablePage() {
   const navigate = useNavigate()
+  const { isJubilee } = useJubilee()
   const { movies: allMovies, loading, error, addMovieToCache } = useMovies()
   const movies = useMemo(() => allMovies.filter((m) => !isWishlistMovie(m)), [allMovies])
   const [sort, setSort] = useState<SortColumn>('title')
@@ -60,7 +62,9 @@ export default function MovieTablePage() {
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-        <h1 className="text-xl font-medium">Mathias Filmsamling</h1>
+        <h1 className="text-xl font-medium">
+          {isJubilee ? '🎉🎂🍻🍾 Grattis på födelsedagen Mathias 🍾🍻🎂🎉' : 'Mathias Filmsamling'}
+        </h1>
         <ClerkLoading>
           <div className="w-36 h-11 rounded-md bg-surface-2 animate-pulse" aria-hidden="true" />
         </ClerkLoading>
