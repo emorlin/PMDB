@@ -3,11 +3,15 @@ const GITHUB_URL = 'https://github.com/emorlin/PMDB'
 const FEATURES = [
   {
     title: 'Tabellvy',
-    text: 'Hela samlingen i en sorterbar tabell – titel, år, rating, IMDb-betyg, speltid, placering och tillagd-datum. Sök på titel i realtid, filtrera på "endast osedda", och se antal filmer/osedda/nya sen sist i statistikrutorna.',
+    text: 'Hela samlingen i en sorterbar tabell – titel, år, rating, IMDb-betyg, speltid, placering och tillagd-datum. Sök på titel i realtid, filtrera på "endast osedda", och se antal sedda/osedda/nya sen sist i statistikrutorna.',
   },
   {
     title: 'Upptäck',
     text: 'Bläddra i samlingen som ett postergrid, filtrera på bokstav eller slumpa fram en film att se. Bokstav och sida sparas i webbadressen, så en vy går att länka eller bokmärka.',
+  },
+  {
+    title: 'Önskelista',
+    text: 'Filmer med platsen "Önskelista" visas i en egen postergrid-vy istället för i Tabellvyn eller Upptäck, och räknas inte med i Sedda/Osedda-statistiken. Skapa platsen under Inställningar och sätt filmer dit för att samla önskemål separat från den egna samlingen.',
   },
   {
     title: 'Lägg till film',

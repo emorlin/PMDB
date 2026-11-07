@@ -2,6 +2,7 @@ import { Routes, Route } from 'react-router-dom'
 import AppLayout from './components/AppLayout'
 import MovieTablePage from './pages/MovieTablePage'
 import DiscoverPage from './pages/DiscoverPage'
+import WishlistPage from './pages/WishlistPage'
 import MovieDetailPage from './pages/MovieDetailPage'
 import AdminPage from './pages/AdminPage'
 import AboutPage from './pages/AboutPage'
@@ -12,6 +13,7 @@ function App() {
       <Route element={<AppLayout />}>
         <Route path="/" element={<MovieTablePage />} />
         <Route path="/discover" element={<DiscoverPage />} />
+        <Route path="/wishlist" element={<WishlistPage />} />
         <Route path="/movie/:id" element={<MovieDetailPage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/om" element={<AboutPage />} />

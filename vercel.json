@@ -1,6 +1,7 @@
 {
   "rewrites": [
     { "source": "/discover", "destination": "/index.html" },
+    { "source": "/wishlist", "destination": "/index.html" },
     { "source": "/admin", "destination": "/index.html" },
     { "source": "/om", "destination": "/index.html" },
     { "source": "/movie/:id", "destination": "/index.html" }

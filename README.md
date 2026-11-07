@@ -49,11 +49,12 @@ Byggd som ett litet, fokuserat projekt: en användare, en samling, inget cachnin
 
 | Funktion | Beskrivning |
 |---|---|
-| **Tabellvy** | Startsida: Titel, År, Rating, IMDb-rating, Tid, Placering, Tillagd – sorterbara kolumner (klick eller tangentbord). Realtidssökning på titel, "endast osedda"-filter, och statistikrutor (antal filmer / antal osedda / nya sen sist). Blir en kortlista med egen sorteringskontroll under `md`-brytpunkten |
+| **Tabellvy** | Startsida: Titel, År, Rating, IMDb-rating, Tid, Placering, Tillagd – sorterbara kolumner (klick eller tangentbord). Realtidssökning på titel, "endast osedda"-filter, och statistikrutor (antal sedda / antal osedda / nya sen sist). Blir en kortlista med egen sorteringskontroll under `md`-brytpunkten |
 | **Detaljsida** | Poster, handling, skådespelare, regissör och genre hämtas alltid live från TMDB (aldrig cachat i databasen). Egen rating, IMDb-rating och placering visas/redigeras, med redigera- och ta bort-funktion (kräver inloggning) |
 | **Lägg till film** | Sökmodal mot TMDB, autofyller år/speltid/IMDb-rating; plats och egen rating (1–10) fylls i manuellt. Ett valfritt årtal-fält smalnar ner TMDB-sökningen (`primary_release_year`) – användbart för vanliga titlar med tusentals träffar. Man hamnar direkt på filmens detaljsida efter tillägg. Kräver inloggning |
 | **Matcha mot TMDB i efterhand** | Filmer utan `tmdb_id` (t.ex. CSV-importerade) öppnar automatiskt en sökmodal på detaljsidan så de kan kopplas till TMDB/IMDb senare – utan att röra egen rating eller plats. Samma årtal-filter som ovan, förifyllt med filmens egna år om det finns. Kräver inloggning |
-| **Upptäck-vy** | Rutnät av den egna samlingen (inte nya filmer att köpa): bokstavsfilter (horisontell A–Ö-rad på desktop, dropdown på mobil), "endast osedda"-filter, slumpknapp, klassisk sidpaginering (48/sida). Bokstav och sidnummer ligger i URL:en (`?letter=B&page=2`) – delbart och webbläsarhistorik fungerar |
+| **Upptäck-vy** | Rutnät av den egna samlingen (inte nya filmer att köpa, och inte filmer i Önskelistan): bokstavsfilter (horisontell A–Ö-rad på desktop, dropdown på mobil), "endast osedda"-filter, slumpknapp, klassisk sidpaginering (48/sida). Bokstav och sidnummer ligger i URL:en (`?letter=B&page=2`) – delbart och webbläsarhistorik fungerar |
+| **Önskelista-vy** | Rutnät (samma `PosterGrid` som Upptäck) + bokstavsfilter över filmer vars plats heter exakt "Önskelista" – skapa platsen under Inställningar och sätt dit filmer för att de ska dyka upp här. Visas varken i Tabellvyn, Upptäck-vyn eller Sedda/Osedda-räknarna |
 | **Inställningar** | Ljust/mörkt tema (sparas i `localStorage`, synligt för alla). Export av hela samlingen till en `.xlsx`-fil, öppet för alla. Platshanteringen – lägg till, byta namn, ta bort (blockeras om platsen används av en film) – är helt dold tills man loggar in, inte bara knapparna |
 | **Om** | Kort, användarvänlig info om appen och dess funktioner, med länk till källkoden på GitHub |
 | **Inloggning** | Google-inloggning (via Clerk) krävs för att lägga till, redigera, matcha eller ta bort filmer, samt hantera platser. Bläddra, söka och filtrera är öppet för alla – se [eget avsnitt](#inloggning--behörighet) |
@@ -164,19 +165,20 @@ PMDB/
 │   │   ├── MovieTable.tsx           # Sorterbar tabell (desktop) / kortlista (mobil)
 │   │   ├── MovieTableSkeleton.tsx   # Platshållare medan filmlistan laddas (undviker layouthopp)
 │   │   ├── AlphabetFilter.tsx       # A–Ö-filter: horisontell rad (desktop) / dropdown (mobil)
-│   │   ├── PosterGrid.tsx           # Responsivt postergrid för Upptäck-vyn
+│   │   ├── PosterGrid.tsx           # Responsivt postergrid, delat av Upptäck- och Önskelista-vyn
 │   │   └── PwaUpdatePrompt.tsx      # "Ny version tillgänglig"-ruta, se PWA & offline-cachning
 │   ├── hooks/
 │   │   └── useTmdbSearch.ts         # Debounce (300ms) + TMDB-sökning, delad av båda sökmodalerna
 │   ├── pages/
 │   │   ├── MovieTablePage.tsx       # "/" – tabellvy, sök, statistik, lägg till film
 │   │   ├── DiscoverPage.tsx         # "/discover" – upptäck egen samling (bokstav/sida i URL:en)
+│   │   ├── WishlistPage.tsx         # "/wishlist" – filmer med platsen "Önskelista" (bokstav i URL:en)
 │   │   ├── MovieDetailPage.tsx      # "/movie/:id" – detaljvy, redigera, ta bort, matcha
 │   │   ├── AdminPage.tsx            # "/admin" – platser + tema
 │   │   └── AboutPage.tsx            # "/om" – info om appen + GitHub-länk
 │   ├── lib/
 │   │   ├── supabase.ts              # Klient, schema "pmdb" (läsning)
-│   │   ├── movies.ts                # Läsning direkt mot Supabase, skrivning via /api/movies
+│   │   ├── movies.ts                # Läsning direkt mot Supabase, skrivning via /api/movies, isWishlistMovie()
 │   │   ├── movies-context.tsx       # MoviesProvider/useMovies – delad cache av filmlistan
 │   │   ├── locations.ts             # Läsning direkt mot Supabase, skrivning via /api/locations
 │   │   ├── tmdb.ts                  # Klientsidans wrapper mot /api/tmdb-*
@@ -495,6 +497,7 @@ Kopplas repot till GitHub (Vercel → Settings → Git) sker deploy automatiskt 
 {
   "rewrites": [
     { "source": "/discover", "destination": "/index.html" },
+    { "source": "/wishlist", "destination": "/index.html" },
     { "source": "/admin", "destination": "/index.html" },
     { "source": "/om", "destination": "/index.html" },
     { "source": "/movie/:id", "destination": "/index.html" }

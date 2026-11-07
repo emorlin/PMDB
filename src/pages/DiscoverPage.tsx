@@ -4,7 +4,7 @@ import { SignedIn, ClerkLoading, ClerkLoaded } from '@clerk/clerk-react'
 import AlphabetFilter from '../components/AlphabetFilter'
 import PosterGrid from '../components/PosterGrid'
 import AddMovieModal from '../components/AddMovieModal'
-import { compareMovies } from '../lib/movies'
+import { compareMovies, isWishlistMovie } from '../lib/movies'
 import { useMovies } from '../lib/movies-context'
 import type { Movie } from '../types/movie'
 
@@ -36,7 +36,8 @@ export default function DiscoverPage() {
   const page = Math.max(1, parseInt(searchParams.get('page') ?? '1', 10) || 1)
 
   const all = useMemo(
-    () => [...movies].sort((a, b) => compareMovies(a, b, 'title', 'asc')),
+    () =>
+      movies.filter((m) => !isWishlistMovie(m)).sort((a, b) => compareMovies(a, b, 'title', 'asc')),
     [movies],
   )
 

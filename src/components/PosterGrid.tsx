@@ -5,9 +5,10 @@ import type { Movie } from '../types/movie'
 
 interface Props {
   movies: Movie[]
+  emptyMessage?: string
 }
 
-export default function PosterGrid({ movies }: Props) {
+export default function PosterGrid({ movies, emptyMessage = 'Inga filmer matchar filtret.' }: Props) {
   const navigate = useNavigate()
   const [posters, setPosters] = useState<Record<string, string | null>>({})
 
@@ -35,7 +36,7 @@ export default function PosterGrid({ movies }: Props) {
 
   if (movies.length === 0) {
     return (
-      <div className="text-center text-text-muted text-sm py-10 flex-1">Inga filmer matchar filtret.</div>
+      <div className="text-center text-text-muted text-sm py-10 flex-1">{emptyMessage}</div>
     )
   }
 

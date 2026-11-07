@@ -4,7 +4,7 @@ import { SignedIn, ClerkLoading, ClerkLoaded } from '@clerk/clerk-react'
 import MovieTable from '../components/MovieTable'
 import MovieTableSkeleton from '../components/MovieTableSkeleton'
 import AddMovieModal from '../components/AddMovieModal'
-import { compareMovies } from '../lib/movies'
+import { compareMovies, isWishlistMovie } from '../lib/movies'
 import { useMovies } from '../lib/movies-context'
 import type { SortColumn, SortDirection } from '../types/movie'
 
@@ -12,7 +12,8 @@ const LAST_VISIT_KEY = 'pmdb-last-visit'
 
 export default function MovieTablePage() {
   const navigate = useNavigate()
-  const { movies, loading, error, addMovieToCache } = useMovies()
+  const { movies: allMovies, loading, error, addMovieToCache } = useMovies()
+  const movies = useMemo(() => allMovies.filter((m) => !isWishlistMovie(m)), [allMovies])
   const [sort, setSort] = useState<SortColumn>('title')
   const [dir, setDir] = useState<SortDirection>('asc')
   const [showAdd, setShowAdd] = useState(false)
@@ -77,8 +78,8 @@ export default function MovieTablePage() {
 
       <div className="flex flex-wrap gap-3 mb-4">
         <div className="rounded-md bg-surface-2 border border-border px-4 py-2">
-          <div className="text-xs text-text-muted">Filmer</div>
-          <div className="text-lg font-medium">{movies.length}</div>
+          <div className="text-xs text-text-muted">Sedda</div>
+          <div className="text-lg font-medium">{movies.length - unseenCount}</div>
         </div>
         <div className="rounded-md bg-surface-2 border border-border px-4 py-2">
           <div className="text-xs text-text-muted">Osedda</div>

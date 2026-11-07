@@ -40,6 +40,9 @@ export default function AppLayout() {
               <NavLink to="/discover" className={linkClass}>
                 Upptäck
               </NavLink>
+              <NavLink to="/wishlist" className={linkClass}>
+                Önskelista
+              </NavLink>
               <NavLink to="/admin" className={linkClass}>
                 Inställningar
               </NavLink>

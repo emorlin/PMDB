@@ -3,6 +3,15 @@ import type { Movie, MovieInsert, SortColumn, SortDirection } from '../types/mov
 
 const SELECT_WITH_LOCATION = '*, location:locations(name)'
 
+// Filmer med den här platsen är önskade men inte en del av den fysiska
+// samlingen – de ska därför inte synas i Tabellvyn/Upptäck eller räknas in i
+// Sedda/Osedda, bara i den egna Önskelista-vyn.
+export const WISHLIST_LOCATION_NAME = 'Önskelista'
+
+export function isWishlistMovie(movie: Movie): boolean {
+  return movie.location?.name === WISHLIST_LOCATION_NAME
+}
+
 // PostgREST svarar med max 1000 rader per anrop om man inte sidbryter själv –
 // utan detta trunkeras samlingen tyst (filmer sorterade sist, t.ex. sent i
 // alfabetet, försvinner helt ur listan).
