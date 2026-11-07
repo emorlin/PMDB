@@ -338,6 +338,7 @@ PMDB är byggt med **WCAG 2.1 AA** som riktlinje.
 | **Fokusring** | Global `:focus-visible`-stil (2 px outline, temaanpassad `--focus`-färg) – synlig vid tangentbordsfokus, inte vid musklick |
 | **Färgkontrast** | Egna `--accent-text`- och `--danger`-tokens (utöver `--accent`) håller minst 4,5:1 mot bakgrunden i båda teman. Den råa `--accent`-färgen klarar bara ~3,9:1 som text och används därför enbart som knappbakgrund/kantlinje, aldrig som textfärg |
 | **Modalsemantik** | `role="dialog"`, `aria-modal="true"`, `aria-labelledby`, `Escape` stänger, klick på bakgrunden stänger, egen fokusfälla (`Tab` cyklar inom modalen), `body`-scroll låst medan öppen – i `AddMovieModal` och `MatchMovieModal` |
+| **Mobilnavigering** | Hamburgermeny under `md`-brytpunkten: knapp med `aria-expanded`/`aria-controls`/`aria-label` som växlar en egen `<nav>`, stängs av `Escape` eller automatiskt vid navigering (inget fokustrap, eftersom det inte är en modal) |
 | **Tabellstruktur** | `scope="col"` + `aria-sort="ascending"/"descending"/"none"` på sorterbara `<th>`; sorteringen styrs av riktiga `<button>`-element inuti `<th>`, inte ett klick på `<th>` som inte går att nå med tangentbord |
 | **Responsiv tabell** | Under `md`-brytpunkten ersätts `<table>` av en semantisk `<ul>`-kortlista med egen sorteringskontroll, så funktionaliteten bevaras – inte bara omflutet visuellt |
 | **ARIA-states** | `aria-pressed` på filterknappar (tema, A–Ö-filter), `aria-sort` på tabellrubriker |

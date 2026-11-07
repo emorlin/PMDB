@@ -1,19 +1,45 @@
-import { NavLink, Link, Outlet } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { NavLink, Link, Outlet, useLocation } from 'react-router-dom'
 import { SignedIn, SignedOut, SignInButton, UserButton, ClerkLoading, ClerkLoaded } from '@clerk/clerk-react'
 import { useTheme } from '../lib/theme-context'
 import PwaUpdatePrompt from './PwaUpdatePrompt'
 
 const GITHUB_URL = 'https://github.com/emorlin/PMDB'
 
+const NAV_LINKS = [
+  { to: '/', label: 'Tabell', end: true },
+  { to: '/discover', label: 'Upptäck', end: false },
+  { to: '/wishlist', label: 'Önskelista', end: false },
+  { to: '/admin', label: 'Inställningar', end: false },
+  { to: '/om', label: 'Om', end: false },
+]
+
 const linkClass = ({ isActive }: { isActive: boolean }) =>
   `flex items-center min-h-11 px-3 py-2 rounded-md text-sm ${
     isActive ? 'bg-surface-2 text-text' : 'text-text-muted hover:text-text'
   }`
 
+const mobileLinkClass = (props: { isActive: boolean }) => `${linkClass(props)} w-full`
+
 export default function AppLayout() {
   const { theme } = useTheme()
+  const location = useLocation()
+  const [menuOpen, setMenuOpen] = useState(false)
 
   const year = new Date().getFullYear()
+
+  useEffect(() => {
+    setMenuOpen(false)
+  }, [location.pathname])
+
+  useEffect(() => {
+    if (!menuOpen) return
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setMenuOpen(false)
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [menuOpen])
 
   return (
     <div className="min-h-screen flex flex-col bg-bg text-text">
@@ -24,7 +50,7 @@ export default function AppLayout() {
         Hoppa till innehåll
       </a>
       <header className="border-b border-border">
-        <div className="mx-auto max-w-6xl flex flex-wrap items-center justify-between gap-2 px-4 sm:px-6 py-2 sm:py-3">
+        <div className="mx-auto max-w-6xl flex items-center justify-between gap-2 px-4 sm:px-6 py-2 sm:py-3">
           <Link to="/" className="flex items-center rounded-md focus-visible:outline-offset-4">
             <img
               src={theme === 'dark' ? '/logo-dark.png' : '/logo.png'}
@@ -32,23 +58,13 @@ export default function AppLayout() {
               className="h-9 w-auto"
             />
           </Link>
-          <div className="flex flex-wrap items-center gap-2">
-            <nav aria-label="Huvudmeny" className="flex flex-wrap gap-1">
-              <NavLink to="/" end className={linkClass}>
-                Tabell
-              </NavLink>
-              <NavLink to="/discover" className={linkClass}>
-                Upptäck
-              </NavLink>
-              <NavLink to="/wishlist" className={linkClass}>
-                Önskelista
-              </NavLink>
-              <NavLink to="/admin" className={linkClass}>
-                Inställningar
-              </NavLink>
-              <NavLink to="/om" className={linkClass}>
-                Om
-              </NavLink>
+          <div className="flex items-center gap-2">
+            <nav aria-label="Huvudmeny" className="hidden md:flex flex-wrap gap-1">
+              {NAV_LINKS.map((l) => (
+                <NavLink key={l.to} to={l.to} end={l.end} className={linkClass}>
+                  {l.label}
+                </NavLink>
+              ))}
             </nav>
             <ClerkLoading>
               <div className="w-11 h-11 rounded-full bg-surface-2 animate-pulse" aria-hidden="true" />
@@ -65,8 +81,49 @@ export default function AppLayout() {
                 </SignInButton>
               </SignedOut>
             </ClerkLoaded>
+            <button
+              type="button"
+              onClick={() => setMenuOpen((v) => !v)}
+              aria-expanded={menuOpen}
+              aria-controls="mobile-menu"
+              aria-label={menuOpen ? 'Stäng meny' : 'Öppna meny'}
+              className="md:hidden flex items-center justify-center w-11 h-11 rounded-md text-text-muted hover:text-text hover:bg-surface-2"
+            >
+              {menuOpen ? (
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                  <path
+                    d="M5 5l10 10M15 5L5 15"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              ) : (
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                  <path
+                    d="M3 5h14M3 10h14M3 15h14"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              )}
+            </button>
           </div>
         </div>
+        {menuOpen && (
+          <nav
+            id="mobile-menu"
+            aria-label="Huvudmeny (mobil)"
+            className="md:hidden border-t border-border px-4 sm:px-6 py-2 flex flex-col gap-1"
+          >
+            {NAV_LINKS.map((l) => (
+              <NavLink key={l.to} to={l.to} end={l.end} className={mobileLinkClass}>
+                {l.label}
+              </NavLink>
+            ))}
+          </nav>
+        )}
       </header>
       <main id="main-content" tabIndex={-1} className="flex-1 mx-auto max-w-6xl px-4 sm:px-6 py-6 w-full">
         <Outlet />
